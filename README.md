@@ -39,9 +39,9 @@
     <img src="images/logo.png" alt="Logo" height="120">
   </a>
 <h1 align="center">dpx_new_project</h1>
-<h3 align="center"><i>a sassy project tag line here<</i></h3>
+<h3 align="center"><i>a script to create new project structures</i></h3>
   <p align="center">
-    ...a short description to tease interest
+    ...like taking out the garbage...
     <br />
      »  
      <a href="https://github.com/dubpixel/dpx_new_project"><strong>Project Here!</strong></a>
@@ -82,10 +82,23 @@
 <!-- ABOUT THE PROJECT -->
 <details>
 <summary><h3>About The Project</h3></summary>
-a lengthy description about the project that should probably be many lines. this is where you can get deep about shit and be like oh man its the best hot dog in the univberse because i use the koskusko mustart!
+  Creating new base projects properly is basically a chore when you have a spark of an idea. new folder, new file, LFG...
+ and I was constantly avoiding pushing things to github as they werent formatted properly or they had been forked from another project and the .md had not been updated. 
+  
+  _This sort of thing is like taking out the trash, it sucks when you dont but usually its a pain when you do._
+this hopefully makes it suck less in the future & I can continue to add to this as needed. 
+  
+Script is  designed to quickly deploy a new project  based on the dubpixel standard templates. Selectively copy files and structure based on cmd line flags. It is designed to work witk:
+https://github.com/dubpixel/dpx_readme_template
+
+
+It was created using Claude Sonnet 4.(oHno3!) -  You can see the directives used in taking a little bit the eagerness of claude (golden retriever energy); they worked pretty well for the most part, just needed to remind the AI to review a few times. It was so effective i created several ai code templats and out them into the template repo for later. 
+
+Additionally the ai was fuly briefed with an extensive set of paramaters about how the project should function then echo those back to the comments, before starting to code. This was helpful to review with the AI later on, as well as clarify where it might be confused. before acting on bad information and creating code that does things we do not want. Big note was before ever writing one line of code i wrote close to 100 lines of description. Then told the ai to do exactly what I wanted. The code worked on 2nd run. One small bugfix that caused a few files to not get created first time around. 
+
 </br>
 
-*author(s): // www.dubpixel.tv  - i@dubpixel.tv | other authors* 
+*architect(s): // www.dubpixel.tv  - i@dubpixel.tv 
 </br>
 <h3>Images</h3>
 
@@ -96,7 +109,7 @@ a lengthy description about the project that should probably be many lines. this
 
 ### Built With 
  
- * [![FastLed][FastLed.io]][FastLed-url]
+ *  Claude Sonnet 4
 
 <!--
  * [![KiCad][KiCad.org]][KiCad-url]
@@ -119,33 +132,44 @@ a lengthy description about the project that should probably be many lines. this
 ## Getting Started
 
   ### Prerequisites
+  * [dpx_readme_template](https://github.com/dubpixel/dpx_readme_template) must be installed at the same folder level as this project folder.
   * 
   ### Installation
+  * download and extract, install to same folder as the template
+  * make sure that dpx_new_project/src/dpx_new_project.sh is +rw
 
-  1. 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-1. <!-- Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+dpx_new_project.sh name_of_project[ -H hardware -S software -V Verbose flag}
 
-_For more examples, please refer to the [Documentation](https://example.com)_-->
+example:   ./dpx_new_project.sh gendrigus_500 -V -H
+
+would make a new hardware template called gendrigus_500
 <!-- REFLECTION -->
 ## Reflection
 
 * what did we learn? 
-  - _x_
+  - AI directives are clutch!
+  - Make the AI echo back what it thinks you want it to do. then act.
+  - Echo prompts and actions to comments. 
 * what do we like/hate?
-  - _y_
+  - Really liked how clean the results were. Telling the ai to not jump ahead and try to lead was key. 
 * what would/could we do differently?
-  - _z_
+  - echo the prompts and actions to a separate file, along with a diff style record of what got changed? could make for somebig files.
+  - maybe we have ai commit to git each time instead 
   <!-- ROADMAP -->
 ## Roadmap
 
-- [ ] Feature 1
-    - [ ] Nested Feature
+- [x] Copy a specific subset of files and folders to a new project based on flag input
+    - [x] verbose output flag
+    - [x] search and replace readme.md file in lowercase with project name
+    - [ ] take initial tag line as command argument
+    - [ ] copy licenses based on flag
+    - [ ] take extended description from external file
 
 See the [open issues](https://github.com/dubpixel/dpx_new_project/issues) for a full list of proposed features (and known issues).
 
@@ -178,6 +202,7 @@ Don't forget to give the project a star! Thanks again!
   ### Joshua Fleitell - i@dubpixel.tv
 
   Project Link: [https://github.com/dubpixel/dpx_new_project](https://github.com/dubpixel/dpx_new_project)
+  Template Link: [https://github.com/dubpixel/dpx_readme_template](https://github.com/dubpixel/dpx_readme_template)
 
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
