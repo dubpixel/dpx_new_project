@@ -115,6 +115,10 @@
 # User: "ok make a variant of that, which is a shell script tamplate."
 #   → Created shell script template variant in firmware/src directory
 #
+# User: "ok so here is a twist on step #5. Id like the project name to always be searched and replaced in all lower case regardless of how its typed in as an argument can u do that?"
+#   → Modified string replacement function to convert project name to lowercase before replacement
+#
+#
 # User: "theres also a gemfile that we need to copy. - .ideas should have had files ithem idk what happened to them theyre back now."
 #   → Need to add Gemfile to list of root files to copy and verify .idea files are being copied properly
 #
@@ -148,9 +152,13 @@
 # User: "yes upldate the string replacement part too please"
 #   → Updated string replacement function to replace sassy tagline and project description placeholders in README
 #
-# User: "ok so here is a twist on step #5. Id like the project name to always be searched and replaced in all lower case regardless of how its typed in as an argument can u do that?"
-#   → Modified string replacement function to convert project name to lowercase before replacement
+# User: "ok lets also make a change about folder for the -S flag. with the -S flag we dont care about hardware or firmware. we just care instead about making a folder called src instead."
+#   → Modified folder copying logic to exclude hardware and firmware folders for software projects, create src folder instead
 #
+# User: "well thats close there isnt a src in the priject root - i just want u to make one isntead of coputing hardware and fimrware. does that make more sense>?"
+#   → Fixed logic to create src folder instead of copying hardware/firmware folders for software projects
+#
+
 # ================================================================================
 
 #!/bin/bash
@@ -365,6 +373,16 @@ find "$TEMPLATE_DIR" -type d -name ".git" -prune -o -name ".idea" -prune -o -typ
     if [[ "$dir" != *".git"* ]] && [[ "$dir" != *".idea"* ]]; then
         rel_path="${dir#$TEMPLATE_DIR/}"
         if [ "$rel_path" != "$TEMPLATE_DIR" ]; then
+            # For software projects (-S), skip hardware and firmware folders
+            if [ "$PROJECT_TYPE" = "-S" ]; then
+                if [[ "$rel_path" == "hardware"* ]] || [[ "$rel_path" == "firmware"* ]]; then
+                    if [ "$VERBOSE" = true ]; then
+                        echo "  Skipping directory (software project): $rel_path"
+                    fi
+                    continue
+                fi
+            fi
+            
             if [ "$VERBOSE" = true ]; then
                 echo "  Creating directory: $rel_path"
             fi
@@ -380,6 +398,16 @@ find "$TEMPLATE_DIR" -type f | while read file; do
         rel_path="${file#$TEMPLATE_DIR/}"
         # Skip root level files - they'll be handled separately
         if [[ "$rel_path" == *"/"* ]]; then
+            # For software projects (-S), skip hardware and firmware files
+            if [ "$PROJECT_TYPE" = "-S" ]; then
+                if [[ "$rel_path" == "hardware/"* ]] || [[ "$rel_path" == "firmware/"* ]]; then
+                    if [ "$VERBOSE" = true ]; then
+                        echo "  Skipping file (software project): $rel_path"
+                    fi
+                    continue
+                fi
+            fi
+            
             if [ "$VERBOSE" = true ]; then
                 echo "  Copying file: $rel_path"
             fi
@@ -389,6 +417,15 @@ find "$TEMPLATE_DIR" -type f | while read file; do
         fi
     fi
 done
+
+# For software projects, create a src folder instead of hardware/firmware
+if [ "$PROJECT_TYPE" = "-S" ]; then
+    echo "Step 2: Creating src folder for software project (instead of hardware/firmware)..."
+    mkdir -p "$DEST_DIR/src"
+    if [ "$VERBOSE" = true ]; then
+        echo "  Created src/ directory for software project (replacing hardware/firmware folders)"
+    fi
+fi
 
 # Step 3: Copy specific root level files as-is
 echo "Step 3: Copying root level files..."
