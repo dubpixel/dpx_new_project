@@ -142,6 +142,12 @@
 # User: "ok it needs to create the new project one more folder higher than it did. need to beef up that logic as well. always should be in the folder abouve ...DPX_BLANK etc."
 #   → Updated destination directory logic to create projects in the folder above DPX_BLANK_PROJECT_TEMPLATE
 #
+# User: "can we add some features for the arguments - can they be in any order? also can there be a -M 'messsage goes here' where that message is the sassy tagline ? also want to add a feature where -C ' is the longer comment under about the project' do u understand that and this?"
+#   → Added flexible argument parsing with -M for sassy tagline and -C for project description, allowing arguments in any order
+#
+# User: "yes upldate the string replacement part too please"
+#   → Updated string replacement function to replace sassy tagline and project description placeholders in README
+#
 # User: "ok so here is a twist on step #5. Id like the project name to always be searched and replaced in all lower case regardless of how its typed in as an argument can u do that?"
 #   → Modified string replacement function to convert project name to lowercase before replacement
 #
@@ -155,6 +161,8 @@
 replace_readme_strings() {
     local readme_file="$1"
     local project_name="$2"
+    local sassy_tagline="$3"
+    local project_description="$4"
     
     # Convert project name to lowercase
     local project_name_lower=$(echo "$project_name" | tr '[:upper:]' '[:lower:]')
@@ -172,36 +180,92 @@ replace_readme_strings() {
     # Use sed to replace all instances of dpx_replace_projectName with the actual project name in lowercase
     sed -i '' "s/dpx_replace_projectName/$project_name_lower/g" "$readme_file"
     
+    # Replace sassy tagline if provided
+    if [ -n "$sassy_tagline" ]; then
+        if [ "$VERBOSE" = true ]; then
+            echo "  Replacing 'a sassy project tag line here' with '$sassy_tagline'"
+        fi
+        sed -i '' "s/a sassy project tag line here/$sassy_tagline/g" "$readme_file"
+    fi
+    
+    # Replace project description if provided
+    if [ -n "$project_description" ]; then
+        if [ "$VERBOSE" = true ]; then
+            echo "  Replacing '...a short description to tease interest' with '$project_description'"
+        fi
+        sed -i '' "s/\.\.\.a short description to tease interest/$project_description/g" "$readme_file"
+    fi
+    
     if [ "$VERBOSE" = true ]; then
         echo "  String replacement completed"
     fi
 }
 
 # Check for correct number of arguments
-if [ $# -lt 2 ] || [ $# -gt 3 ]; then
-    echo "Usage: $0 <project_name> <-H|-S> [-V]"
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <project_name> <-H|-S> [-V] [-M 'sassy tagline'] [-C 'project description']"
     echo "  project_name: Name of the new project"
     echo "  -H: Hardware project"
     echo "  -S: Software project"
     echo "  -V: Verbose output (optional)"
+    echo "  -M 'message': Sassy tagline for the project (optional)"
+    echo "  -C 'comment': Longer description for the project (optional)"
+    echo ""
+    echo "Arguments can be in any order except project_name must be first"
     exit 1
 fi
 
-# Parse arguments
+# Initialize variables
 PROJECT_NAME="$1"
-PROJECT_TYPE="$2"
+shift # Remove project name from arguments
+PROJECT_TYPE=""
 VERBOSE=false
+SASSY_TAGLINE=""
+PROJECT_DESCRIPTION=""
 
-# Check for verbose flag
-if [ $# -eq 3 ] && [ "$3" = "-V" ]; then
-    VERBOSE=true
-elif [ $# -eq 3 ]; then
-    echo "Error: Third argument must be -V for verbose output"
-    exit 1
-fi
+# Parse remaining arguments in any order
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -H|-S)
+            if [ -n "$PROJECT_TYPE" ]; then
+                echo "Error: Cannot specify both -H and -S"
+                exit 1
+            fi
+            PROJECT_TYPE="$1"
+            shift
+            ;;
+        -V)
+            VERBOSE=true
+            shift
+            ;;
+        -M)
+            if [ -z "$2" ] || [[ "$2" == -* ]]; then
+                echo "Error: -M requires a message argument"
+                exit 1
+            fi
+            SASSY_TAGLINE="$2"
+            shift 2
+            ;;
+        -C)
+            if [ -z "$2" ] || [[ "$2" == -* ]]; then
+                echo "Error: -C requires a description argument"
+                exit 1
+            fi
+            PROJECT_DESCRIPTION="$2"
+            shift 2
+            ;;
+        *)
+            echo "Error: Unknown option $1"
+            exit 1
+            ;;
+    esac
+done
 
 # Validate project type flag
-if [ "$PROJECT_TYPE" != "-H" ] && [ "$PROJECT_TYPE" != "-S" ]; then
+if [ -z "$PROJECT_TYPE" ]; then
+    echo "Error: Must specify either -H (hardware) or -S (software)"
+    exit 1
+elif [ "$PROJECT_TYPE" != "-H" ] && [ "$PROJECT_TYPE" != "-S" ]; then
     echo "Error: Project type must be -H (hardware) or -S (software)"
     exit 1
 fi
@@ -264,6 +328,12 @@ if [ "$VERBOSE" = true ]; then
     echo "  Verbose mode: ON"
 else
     echo "  Verbose mode: OFF"
+fi
+if [ -n "$SASSY_TAGLINE" ]; then
+    echo "  Sassy tagline: $SASSY_TAGLINE"
+fi
+if [ -n "$PROJECT_DESCRIPTION" ]; then
+    echo "  Project description: $PROJECT_DESCRIPTION"
 fi
 
 # Check if template directory exists
@@ -374,6 +444,6 @@ fi
 echo "Project $PROJECT_NAME created successfully at $DEST_DIR"
 
 # Step 5: Call string replacement function
-replace_readme_strings "$DEST_DIR/README.md" "$PROJECT_NAME"
+replace_readme_strings "$DEST_DIR/README.md" "$PROJECT_NAME" "$SASSY_TAGLINE" "$PROJECT_DESCRIPTION"
 
 echo "Project setup complete!"
