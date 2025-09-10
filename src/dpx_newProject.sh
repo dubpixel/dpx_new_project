@@ -127,6 +127,18 @@
 # User: "can you init this as a git repo"
 #   → Will initialize the dpx_new_project folder as a git repository
 #
+# User: "ok so here is a twist on step #5. Id like the project name to always be searched and replaced in all lower case regardless of how its typed in as an argument can u do that?"
+#   → Modified string replacement function to convert project name to lowercase before replacement
+#
+# User: "ok so somehwo youre still wokring in the old file can e just consolodate to the one version in one folder please"
+#   → Consolidated to work only in dpx_new_project folder going forward
+#
+# User: "ok lets get rid of old file llease"
+#   → Removed old script file from create_new_project_script folder
+#
+# User: "ok so here is a twist on step #5. Id like the project name to always be searched and replaced in all lower case regardless of how its typed in as an argument can u do that?"
+#   → Modified string replacement function to convert project name to lowercase before replacement
+#
 # ================================================================================
 
 #!/bin/bash
@@ -138,6 +150,9 @@ replace_readme_strings() {
     local readme_file="$1"
     local project_name="$2"
     
+    # Convert project name to lowercase
+    local project_name_lower=$(echo "$project_name" | tr '[:upper:]' '[:lower:]')
+    
     if [ ! -f "$readme_file" ]; then
         echo "Error: README.md file not found at $readme_file"
         return 1
@@ -145,11 +160,11 @@ replace_readme_strings() {
     
     echo "Step 5: Performing string replacement in README.md..."
     if [ "$VERBOSE" = true ]; then
-        echo "  Replacing 'dpx_replace_projectName' with '$project_name'"
+        echo "  Replacing 'dpx_replace_projectName' with '$project_name_lower' (lowercase)"
     fi
     
-    # Use sed to replace all instances of dpx_replace_projectName with the actual project name
-    sed -i '' "s/dpx_replace_projectName/$project_name/g" "$readme_file"
+    # Use sed to replace all instances of dpx_replace_projectName with the actual project name in lowercase
+    sed -i '' "s/dpx_replace_projectName/$project_name_lower/g" "$readme_file"
     
     if [ "$VERBOSE" = true ]; then
         echo "  String replacement completed"
