@@ -136,6 +136,12 @@
 # User: "ok lets get rid of old file llease"
 #   → Removed old script file from create_new_project_script folder
 #
+# User: "yep. looks good. lets make another change please. can the program find the template folder to copy based on the new location? can u update the file paths that this is correct and easier depending on hwere i move the template folder?"
+#   → Updated path logic to search for template folder relative to script location and handle different locations
+#
+# User: "ok it needs to create the new project one more folder higher than it did. need to beef up that logic as well. always should be in the folder abouve ...DPX_BLANK etc."
+#   → Updated destination directory logic to create projects in the folder above DPX_BLANK_PROJECT_TEMPLATE
+#
 # User: "ok so here is a twist on step #5. Id like the project name to always be searched and replaced in all lower case regardless of how its typed in as an argument can u do that?"
 #   → Modified string replacement function to convert project name to lowercase before replacement
 #
@@ -200,10 +206,55 @@ if [ "$PROJECT_TYPE" != "-H" ] && [ "$PROJECT_TYPE" != "-S" ]; then
     exit 1
 fi
 
-# Set template source directory (relative to script location)
+# Set template source directory (search multiple possible locations)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEMPLATE_DIR="$SCRIPT_DIR/../dpx_readme_template"
-DEST_DIR="$SCRIPT_DIR/../../$PROJECT_NAME"
+
+# Search for template directory in multiple possible locations
+TEMPLATE_LOCATIONS=(
+    "$SCRIPT_DIR/../../dpx_readme_template"                    # From DPX_NEW_PROJECT/src/
+    "$SCRIPT_DIR/../dpx_readme_template"                       # From dpx_new_project/
+    "$SCRIPT_DIR/../../_....DPX_BLANK_PROJECT_TEMPLATE/dpx_readme_template"  # From project root
+    "$SCRIPT_DIR/../../../dpx_readme_template"                 # One level up from project
+)
+
+TEMPLATE_DIR=""
+for location in "${TEMPLATE_LOCATIONS[@]}"; do
+    if [ -d "$location" ]; then
+        TEMPLATE_DIR="$location"
+        break
+    fi
+done
+
+# If not found in relative paths, try to find it by searching up the directory tree
+if [ -z "$TEMPLATE_DIR" ]; then
+    current_dir="$SCRIPT_DIR"
+    while [ "$current_dir" != "/" ]; do
+        if [ -d "$current_dir/dpx_readme_template" ]; then
+            TEMPLATE_DIR="$current_dir/dpx_readme_template"
+            break
+        fi
+        current_dir="$(dirname "$current_dir")"
+    done
+fi
+
+DEST_DIR=""
+
+# Find the DPX_BLANK_PROJECT_TEMPLATE folder and create projects one level above it
+current_search="$SCRIPT_DIR"
+while [ "$current_search" != "/" ]; do
+    if [[ "$(basename "$current_search")" == *"DPX_BLANK_PROJECT_TEMPLATE"* ]]; then
+        # Found the template folder, go one level up for destination
+        DEST_DIR="$(dirname "$current_search")/$PROJECT_NAME"
+        break
+    fi
+    current_search="$(dirname "$current_search")"
+done
+
+# Fallback if DPX_BLANK_PROJECT_TEMPLATE not found in path
+if [ -z "$DEST_DIR" ]; then
+    # Default behavior - create project relative to script location
+    DEST_DIR="$SCRIPT_DIR/../../$PROJECT_NAME"
+fi
 
 echo "Debug info:"
 echo "  Script directory: $SCRIPT_DIR"
