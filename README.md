@@ -144,11 +144,56 @@ Additionally the ai was fuly briefed with an extensive set of paramaters about h
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-dpx_new_project.sh name_of_project[ -H hardware -S software -V Verbose flag}
+### Basic Usage
+```bash
+./dpx_newProject.sh <project_name> <-H|-S> [-V] [-M 'sassy tagline'] [-C 'project description']
+```
 
-example:   ./dpx_new_project.sh gendrigus_500 -V -H
+**Arguments:**
+- `project_name`: Name of the new project (required, first argument)
+- `-H`: Hardware project
+- `-S`: Software project  
+- `-V`: Verbose output (optional)
+- `-M 'message'`: Sassy tagline for the project (optional)
+- `-C 'comment'`: Longer description for the project (optional)
 
-would make a new hardware template called gendrigus_500
+**Examples:**
+```bash
+./dpx_newProject.sh gendrigus_500 -V -H
+./dpx_newProject.sh my_app -S -M "The coolest software ever" -C "A comprehensive solution for all your needs"
+```
+
+### Global Installation (Symlink Setup)
+
+For convenient access from anywhere on your system:
+
+#### 1. Create Symlink
+```bash
+sudo ln -s "/path/to/your/DPX_NEW_PROJECT/src/dpx_newProject.sh" /usr/local/bin/dpx-new-project
+```
+
+#### 2. Set Environment Variables
+Add to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+```bash
+# DPX Project Generator Settings
+export DPX_ROOT="/path/to/your/_...CIRCUIT_PROJECTS"
+export DPX_PROJECTS_DIR="$HOME/projects"  # Optional: customize project location
+```
+
+Reload your shell:
+```bash
+source ~/.zshrc  # or source ~/.bash_profile
+```
+
+#### 3. Use From Anywhere
+```bash
+dpx-new-project my_awesome_project -H -V -M "The coolest hardware project ever"
+```
+
+### Environment Variables
+- `DPX_TEMPLATE_DIR`: Override template directory location
+- `DPX_PROJECTS_DIR`: Override where new projects are created  
+- `DPX_ROOT`: Base directory containing dpx_readme_template folder
 <!-- REFLECTION -->
 ## Reflection
 

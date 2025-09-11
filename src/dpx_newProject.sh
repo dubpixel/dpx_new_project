@@ -14,6 +14,8 @@
 # - Verification before implementation of any suggestions
 # - Stay focused on the current task - do not jump ahead or suggest next steps
 # - Answer only what is asked, do not anticipate or propose additional work
+# - ALL user prompts and AI solutions must be documented in the change log comments
+#   Format: User prompt as single line, followed by itemized solution with → bullet
 #
 # The AI assistant will follow these directives to ensure code quality,
 # maintainability, and collaborative development practices.
@@ -158,6 +160,29 @@
 # User: "well thats close there isnt a src in the priject root - i just want u to make one isntead of coputing hardware and fimrware. does that make more sense>?"
 #   → Fixed logic to create src folder instead of copying hardware/firmware folders for software projects
 #
+# User: "if i symlink this script to bin can i execute it? I thinkthat we need to be more specifct about how we define the location of a) where new proects get created b) where the template dir is located"
+#   → Added symlink resolution logic, environment variable overrides (DPX_TEMPLATE_DIR, DPX_PROJECTS_DIR, DPX_ROOT), improved path detection
+#
+# User: "ok that was a little too much at a time remember out rules?"
+#   → Acknowledged violation of "small, incremental changes" rule
+#
+# User: "no lets just keep it the way that it is. - u did a mostly fine job. i think that root should probaly stop at _...CIRCUIT_PROJECTS/... because tats rteally the dpx root.....if u think about it. from there all the project files are one leaf down and the template folders are there as well. dont u think that makes a bit more sense?"
+#   → Updated destination directory logic to use _...CIRCUIT_PROJECTS as DPX root instead of going one level above DPX_BLANK_PROJECT_TEMPLATE
+#
+# User: "are ypu sure that youve fixed all the path stuf to work with these changes? what does it do by default. check that behavior too - shit neets to be 10000% working"
+#   → Updated template directory search logic to be consistent with CIRCUIT_PROJECTS root approach
+#
+# User: "also why arent u adding these prompts to the comments . thats a rule. if its not in the rules add it tothe rules (and put it in the comments)"
+#   → Added rule requiring all user prompts and solutions be documented in change log comments
+#
+# User: "can you also notate the formatting? then update the rules to our template files located in sub folders inside dpx_readme_template"
+#   → Added formatting notation to rule (User prompt as single line, solution with → bullet)
+#   → Updated programming_template.c and script_template.sh with new documentation rule
+#
+# User: "youre the best. let me see about doing that sym link and environment variable can u write up some instructions pls? and then add them to the readme where the instructions for usage go"
+#   → Created comprehensive symlink and environment variable setup instructions
+#   → Added detailed usage section to README.md with basic usage, global installation, and environment variables
+#
 
 # ================================================================================
 
@@ -220,6 +245,16 @@ if [ $# -lt 2 ]; then
     echo "  -C 'comment': Longer description for the project (optional)"
     echo ""
     echo "Arguments can be in any order except project_name must be first"
+    echo ""
+    echo "Environment Variables (optional):"
+    echo "  DPX_TEMPLATE_DIR: Override template directory location"
+    echo "  DPX_PROJECTS_DIR: Override where new projects are created"
+    echo "  DPX_ROOT: Base directory containing dpx_readme_template folder"
+    echo ""
+    echo "Examples:"
+    echo "  $0 my_project -H                    # Create hardware project"
+    echo "  $0 my_app -S -V                     # Create software project with verbose output"
+    echo "  DPX_PROJECTS_DIR=~/projects $0 my_project -H  # Create in specific directory"
     exit 1
 fi
 
@@ -278,57 +313,97 @@ elif [ "$PROJECT_TYPE" != "-H" ] && [ "$PROJECT_TYPE" != "-S" ]; then
     exit 1
 fi
 
-# Set template source directory (search multiple possible locations)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Search for template directory in multiple possible locations
-TEMPLATE_LOCATIONS=(
-    "$SCRIPT_DIR/../../dpx_readme_template"                    # From DPX_NEW_PROJECT/src/
-    "$SCRIPT_DIR/../dpx_readme_template"                       # From dpx_new_project/
-    "$SCRIPT_DIR/../../_....DPX_BLANK_PROJECT_TEMPLATE/dpx_readme_template"  # From project root
-    "$SCRIPT_DIR/../../../dpx_readme_template"                 # One level up from project
-)
-
-TEMPLATE_DIR=""
-for location in "${TEMPLATE_LOCATIONS[@]}"; do
-    if [ -d "$location" ]; then
-        TEMPLATE_DIR="$location"
-        break
+# Resolve actual script location (handle symlinks)
+if [ -L "${BASH_SOURCE[0]}" ]; then
+    # Script is a symlink, resolve to actual location
+    ACTUAL_SCRIPT="$(readlink "${BASH_SOURCE[0]}")"
+    if [[ "$ACTUAL_SCRIPT" != /* ]]; then
+        # Relative symlink, make it absolute
+        ACTUAL_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd "$(dirname "$ACTUAL_SCRIPT")" && pwd)/$(basename "$ACTUAL_SCRIPT")"
     fi
-done
-
-# If not found in relative paths, try to find it by searching up the directory tree
-if [ -z "$TEMPLATE_DIR" ]; then
-    current_dir="$SCRIPT_DIR"
-    while [ "$current_dir" != "/" ]; do
-        if [ -d "$current_dir/dpx_readme_template" ]; then
-            TEMPLATE_DIR="$current_dir/dpx_readme_template"
-            break
-        fi
-        current_dir="$(dirname "$current_dir")"
-    done
+else
+    # Script is not a symlink
+    ACTUAL_SCRIPT="${BASH_SOURCE[0]}"
 fi
 
-DEST_DIR=""
+SCRIPT_DIR="$(cd "$(dirname "$ACTUAL_SCRIPT")" && pwd)"
 
-# Find the DPX_BLANK_PROJECT_TEMPLATE folder and create projects one level above it
-current_search="$SCRIPT_DIR"
-while [ "$current_search" != "/" ]; do
-    if [[ "$(basename "$current_search")" == *"DPX_BLANK_PROJECT_TEMPLATE"* ]]; then
-        # Found the template folder, go one level up for destination
-        DEST_DIR="$(dirname "$current_search")/$PROJECT_NAME"
-        break
+# Environment variable overrides (for flexibility when symlinked or moved)
+if [ -n "$DPX_TEMPLATE_DIR" ]; then
+    TEMPLATE_DIR="$DPX_TEMPLATE_DIR"
+    echo "Using template directory from DPX_TEMPLATE_DIR: $TEMPLATE_DIR"
+elif [ -n "$DPX_ROOT" ]; then
+    TEMPLATE_DIR="$DPX_ROOT/dpx_readme_template"
+    echo "Using template directory from DPX_ROOT: $TEMPLATE_DIR"
+else
+    # Search for template directory - first try to find CIRCUIT_PROJECTS root, then look for template there
+    current_search="$SCRIPT_DIR"
+    while [ "$current_search" != "/" ]; do
+        if [[ "$(basename "$current_search")" == *"CIRCUIT_PROJECTS"* ]]; then
+            # Found the DPX root, look for template there
+            if [ -d "$current_search/_....DPX_BLANK_PROJECT_TEMPLATE/dpx_readme_template" ]; then
+                TEMPLATE_DIR="$current_search/_....DPX_BLANK_PROJECT_TEMPLATE/dpx_readme_template"
+                break
+            fi
+        fi
+        current_search="$(dirname "$current_search")"
+    done
+    
+    # If not found via CIRCUIT_PROJECTS search, try relative paths from script location
+    if [ -z "$TEMPLATE_DIR" ]; then
+        TEMPLATE_LOCATIONS=(
+            "$SCRIPT_DIR/../../dpx_readme_template"                    # From DPX_NEW_PROJECT/src/
+            "$SCRIPT_DIR/../dpx_readme_template"                       # From dpx_new_project/
+            "$SCRIPT_DIR/../../../dpx_readme_template"                 # One level up from project
+        )
+
+        for location in "${TEMPLATE_LOCATIONS[@]}"; do
+            if [ -d "$location" ]; then
+                TEMPLATE_DIR="$location"
+                break
+            fi
+        done
     fi
-    current_search="$(dirname "$current_search")"
-done
 
-# Fallback if DPX_BLANK_PROJECT_TEMPLATE not found in path
-if [ -z "$DEST_DIR" ]; then
-    # Default behavior - create project relative to script location
-    DEST_DIR="$SCRIPT_DIR/../../$PROJECT_NAME"
+    # If still not found, try searching up the directory tree from script location
+    if [ -z "$TEMPLATE_DIR" ]; then
+        current_dir="$SCRIPT_DIR"
+        while [ "$current_dir" != "/" ]; do
+            if [ -d "$current_dir/dpx_readme_template" ]; then
+                TEMPLATE_DIR="$current_dir/dpx_readme_template"
+                break
+            fi
+            current_dir="$(dirname "$current_dir")"
+        done
+    fi
+fi
+
+# Determine destination directory
+if [ -n "$DPX_PROJECTS_DIR" ]; then
+    DEST_DIR="$DPX_PROJECTS_DIR/$PROJECT_NAME"
+    echo "Using projects directory from DPX_PROJECTS_DIR: $DPX_PROJECTS_DIR"
+else
+    # Find the _...CIRCUIT_PROJECTS folder (the DPX root)
+    current_search="$SCRIPT_DIR"
+    while [ "$current_search" != "/" ]; do
+        if [[ "$(basename "$current_search")" == *"CIRCUIT_PROJECTS"* ]]; then
+            # Found the DPX root, create projects here
+            DEST_DIR="$current_search/$PROJECT_NAME"
+            break
+        fi
+        current_search="$(dirname "$current_search")"
+    done
+
+    # Fallback if CIRCUIT_PROJECTS not found in path
+    if [ -z "$DEST_DIR" ]; then
+        # Default behavior - create project in current working directory
+        DEST_DIR="$(pwd)/$PROJECT_NAME"
+        echo "Warning: Could not locate _...CIRCUIT_PROJECTS folder, creating project in current directory"
+    fi
 fi
 
 echo "Debug info:"
+echo "  Script location: $ACTUAL_SCRIPT"
 echo "  Script directory: $SCRIPT_DIR"
 echo "  Template directory: $TEMPLATE_DIR"
 echo "  Destination directory: $DEST_DIR"
