@@ -183,6 +183,9 @@
 #   → Created comprehensive symlink and environment variable setup instructions
 #   → Added detailed usage section to README.md with basic usage, global installation, and environment variables
 #
+# User: "can you please fix this" (DPX_ROOT environment variable not finding template directory)
+#   → Fixed DPX_ROOT path logic to look for template at $DPX_ROOT/_....DPX_BLANK_PROJECT_TEMPLATE/dpx_readme_template
+#
 
 # ================================================================================
 
@@ -333,7 +336,7 @@ if [ -n "$DPX_TEMPLATE_DIR" ]; then
     TEMPLATE_DIR="$DPX_TEMPLATE_DIR"
     echo "Using template directory from DPX_TEMPLATE_DIR: $TEMPLATE_DIR"
 elif [ -n "$DPX_ROOT" ]; then
-    TEMPLATE_DIR="$DPX_ROOT/dpx_readme_template"
+    TEMPLATE_DIR="$DPX_ROOT/_....DPX_BLANK_PROJECT_TEMPLATE/dpx_readme_template"
     echo "Using template directory from DPX_ROOT: $TEMPLATE_DIR"
 else
     # Search for template directory - first try to find CIRCUIT_PROJECTS root, then look for template there
