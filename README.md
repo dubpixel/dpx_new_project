@@ -212,8 +212,9 @@ dpx-new-project my_awesome_project -H -V -M "The coolest hardware project ever"
 - [x] Copy a specific subset of files and folders to a new project based on flag input
     - [x] verbose output flag
     - [x] search and replace readme.md file in lowercase with project name
-    - [ ] take initial tag line as command argument
-    - [ ] copy licenses based on flag
+    - [x] take initial tag line as command argument
+    - [ ] set to never copy license. projects initialize with no license.
+    - [ ] select from more than just h/s templates - -T name or something
     - [ ] take extended description from external file
 
 See the [open issues](https://github.com/dubpixel/dpx_new_project/issues) for a full list of proposed features (and known issues).
