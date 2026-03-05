@@ -1,200 +1,19 @@
-# ================================================================================
-# PROJECT DOCUMENTATION
-# ================================================================================
-#
-# This project includes AI-generated code assistance provided by GitHub Copilot.
-# 
-# GitHub Copilot is an AI programming assistant that helps developers write code
-# more efficiently by providing suggestions and completing code patterns.
-#
-# Ground Rules for AI Assistance:
-# - No modifications to working code without explicit request
-# - Comprehensive commenting of all code and preservation of existing comments (remove comments that become false/obsolete)
-# - Small, incremental changes to maintain code stability
-# - Verification before implementation of any suggestions
-# - Stay focused on the current task - do not jump ahead or suggest next steps
-# - Answer only what is asked, do not anticipate or propose additional work
-# - ALL user prompts and AI solutions must be documented in the change log comments
-#   Format: User prompt as single line, followed by itemized solution with → bullet
-#
-# The AI assistant will follow these directives to ensure code quality,
-# maintainability, and collaborative development practices.
-#
-# ================================================================================
-# DPX NEW PROJECT CREATOR
-# ================================================================================
-#
-# Script Name: dpx_newProject.sh
-# Architect: dubpixel / Joshua Fleitell
-# Purpose: Automated project template generator for software and hardware projects
-#
-# FUNCTIONALITY OVERVIEW:
-# 1) Template Copying: Recursively copies the DPX_BLANK_PROJECT_TEMPLATE folder
-#    - Includes all files and directories (including hidden files/folders)
-#    - Excludes .git folder to avoid version control conflicts
-#    - Copies everything that is there except .git folder
-#    - Supports both software and hardware project templates
-#
-# 2) Project Type Selection and File Processing:
-#    - Hardware projects: README-hardware_template.md → README.md
-#    - Software projects: README-software_template.md → README.md
-#    - CHANGELOG-dpx-template.md → CHANGELOG.md (always copied and renamed)
-#    - dpx_release_note_template.md → dpx_release_note_template.md (always copied as-is)
-#    - .gitignore → .gitignore (always copied as-is)
-#    - .gitattributes → .gitattributes (always copied as-is)
-#    - _config.yml → _config.yml (always copied as-is)
-#
-# 3) Root Level File Handling:
-#    - Only specific files from root are copied (listed above)
-#    - All template README variants are excluded from final project
-#    - Other root files (like README.md, CHANGELOG.md, etc.) are not copied
-#
-# 4) Folder Structure Copying:
-#    - All folders except .git are copied recursively and untouched
-#    - Includes: images/, hardware/, firmware/, ibom/, .github/, .idea/, etc.
-#    - No renaming of folders - copied as-is with full contents
-#
-#    KEY FILES TO COPY AS-IS:
-#     - .gitignore
-#     - .gitattributes
-#     - _config.yml
-#     - dpx_release_note_template.md
-#
-#   FOLDERS TO COPY RECURSIVELY (excluding .git and .idea):
-#     - images/ (project images and assets)
-#     - hardware/ (3d/, production_files_RTG/, schematic/, spec/, src/)
-#     - firmware/ (firmware code structure)
-#     - ibom/ (interactive BOM files)
-#     - .github/ (GitHub templates and workflows)
-#
-#     ** Note: All folders copied as-is with full contents, no renaming
-#
-# 5) String Replacement: Post-copy processing to customize template files
-#    - Updates project-specific strings in key files (README.md, etc.)
-#    - Replaces placeholder text with actual project information
-#    - Ensures project-specific customization after template deployment
-#
-# TEMPLATE FOLDER ANALYSIS:
-# Based on the path structure, the template folder contains:
-# 
-# KEY FILES TO COPY AND RENAME:
-# - README-hardware_template.md (becomes README.md for hardware projects)
-# - README-software_template.md (becomes README.md for software projects)
-# - CHANGELOG-dpx-template.md (becomes CHANGELOG.md)
-#
-# 
-#
-# ================================================================================
-#
-# CHANGE LOG:
-# 
-# User: "lets now write the script : it takes two arguments to start: first argument is the name of the new project and the second argument is the flag for hardware or software -H or -S - the script should encompas steps 1-4 for now and not step number 5"
-#   → Added bash script implementation with argument parsing, path validation, and file copying logic
-# 
-# User: "ok make it work" (after copy errors for .github files)
-#   → Fixed by adding mkdir -p before copying files to ensure parent directories exist
-# 
-# User: "ok so can u also echo wtf its doing?"
-#   → Added detailed echo statements for all operations
-# 
-# User: "ok edit it to take a third argument -V for that level of verbosity otherwise just echo paths"
-#   → Modified to accept 3rd argument -V for verbose mode, otherwise show only paths/steps
-# 
-# User: "can you actually inlcude verbatim what my prompt was? also lets move that section to around line 91-92 in the code."
-#   → Moved change log to line ~91 and added verbatim user prompts
-#
-# User: "oh i want verbatim user prompts as one line and your solution itemized underneath if ui cam pls pagenate like that would be great thx"
-#   → Reformatted change log with user prompts as single lines and solutions itemized underneath
-#
-# User: "ok so this looks like it works good so far lets put the last step into play -step 5. lets write a separate function to search and replace the string in the README.md file. This is pretty straightforwartd i usually do it manually in sublimetext - basically find and replace all."
-#   → Added string replacement function for README.md file using sed to replace placeholder strings
-#
-# User: "ok so now heres a fun side quest. Take this shell script. leave the directives about how to be a good AI and make a programming file template in the firmware/src directory of te current project were working in?"
-#   → Created programming file template with AI directives in firmware/src directory
-#
-# User: "ok make a variant of that, which is a shell script tamplate."
-#   → Created shell script template variant in firmware/src directory
-#
-# User: "ok so here is a twist on step #5. Id like the project name to always be searched and replaced in all lower case regardless of how its typed in as an argument can u do that?"
-#   → Modified string replacement function to convert project name to lowercase before replacement
-#
-#
-# User: "theres also a gemfile that we need to copy. - .ideas should have had files ithem idk what happened to them theyre back now."
-#   → Need to add Gemfile to list of root files to copy and verify .idea files are being copied properly
-#
-# User: "im not even sure we need .idea. i thoght it had to do with something i configured to do with how the githuib pages formatting works"
-#   → Added Gemfile to root files copy list, .idea folder may not be necessary (IDE-specific files)
-#
-# User: "ok lets exclude copying it for now but we can revisit it later"
-#   → Modified folder copying to exclude .idea folder (like .git exclusion)
-#
-# User: "can you init this as a git repo"
-#   → Will initialize the dpx_new_project folder as a git repository
-#
-# User: "ok so here is a twist on step #5. Id like the project name to always be searched and replaced in all lower case regardless of how its typed in as an argument can u do that?"
-#   → Modified string replacement function to convert project name to lowercase before replacement
-#
-# User: "ok so somehwo youre still wokring in the old file can e just consolodate to the one version in one folder please"
-#   → Consolidated to work only in dpx_new_project folder going forward
-#
-# User: "ok lets get rid of old file llease"
-#   → Removed old script file from create_new_project_script folder
-#
-# User: "yep. looks good. lets make another change please. can the program find the template folder to copy based on the new location? can u update the file paths that this is correct and easier depending on hwere i move the template folder?"
-#   → Updated path logic to search for template folder relative to script location and handle different locations
-#
-# User: "ok it needs to create the new project one more folder higher than it did. need to beef up that logic as well. always should be in the folder abouve ...DPX_BLANK etc."
-#   → Updated destination directory logic to create projects in the folder above DPX_BLANK_PROJECT_TEMPLATE
-#
-# User: "can we add some features for the arguments - can they be in any order? also can there be a -M 'messsage goes here' where that message is the sassy tagline ? also want to add a feature where -C ' is the longer comment under about the project' do u understand that and this?"
-#   → Added flexible argument parsing with -M for sassy tagline and -C for project description, allowing arguments in any order
-#
-# User: "yes upldate the string replacement part too please"
-#   → Updated string replacement function to replace sassy tagline and project description placeholders in README
-#
-# User: "ok lets also make a change about folder for the -S flag. with the -S flag we dont care about hardware or firmware. we just care instead about making a folder called src instead."
-#   → Modified folder copying logic to exclude hardware and firmware folders for software projects, create src folder instead
-#
-# User: "well thats close there isnt a src in the priject root - i just want u to make one isntead of coputing hardware and fimrware. does that make more sense>?"
-#   → Fixed logic to create src folder instead of copying hardware/firmware folders for software projects
-#
-# User: "if i symlink this script to bin can i execute it? I thinkthat we need to be more specifct about how we define the location of a) where new proects get created b) where the template dir is located"
-#   → Added symlink resolution logic, environment variable overrides (DPX_TEMPLATE_DIR, DPX_PROJECTS_DIR, DPX_ROOT), improved path detection
-#
-# User: "ok that was a little too much at a time remember out rules?"
-#   → Acknowledged violation of "small, incremental changes" rule
-#
-# User: "no lets just keep it the way that it is. - u did a mostly fine job. i think that root should probaly stop at _...CIRCUIT_PROJECTS/... because tats rteally the dpx root.....if u think about it. from there all the project files are one leaf down and the template folders are there as well. dont u think that makes a bit more sense?"
-#   → Updated destination directory logic to use _...CIRCUIT_PROJECTS as DPX root instead of going one level above DPX_BLANK_PROJECT_TEMPLATE
-#
-# User: "are ypu sure that youve fixed all the path stuf to work with these changes? what does it do by default. check that behavior too - shit neets to be 10000% working"
-#   → Updated template directory search logic to be consistent with CIRCUIT_PROJECTS root approach
-#
-# User: "also why arent u adding these prompts to the comments . thats a rule. if its not in the rules add it tothe rules (and put it in the comments)"
-#   → Added rule requiring all user prompts and solutions be documented in change log comments
-#
-# User: "can you also notate the formatting? then update the rules to our template files located in sub folders inside dpx_readme_template"
-#   → Added formatting notation to rule (User prompt as single line, solution with → bullet)
-#   → Updated programming_template.c and script_template.sh with new documentation rule
-#
-# User: "youre the best. let me see about doing that sym link and environment variable can u write up some instructions pls? and then add them to the readme where the instructions for usage go"
-#   → Created comprehensive symlink and environment variable setup instructions
-#   → Added detailed usage section to README.md with basic usage, global installation, and environment variables
-#
-# User: "can you please fix this" (DPX_ROOT environment variable not finding template directory)
-#   → Fixed DPX_ROOT path logic to look for template at $DPX_ROOT/_....DPX_BLANK_PROJECT_TEMPLATE/dpx_readme_template
-#
-# User: "i want to change that the script copies the license file from the template folder. it should never copy any LICENSE.txt from dpx_readme_template" / "no you never want to copy a LICENSE.txt when setting up new porject. no license file"
-#   → Removed LICENSE.txt from documentation comments (lines 43, 59)
-#   → Removed LICENSE.txt copy command and verbose echo from Step 3 (lines 511-513)
-#   → New projects will not include any license file
-#
-
-# ================================================================================
-
 #!/bin/bash
-
-# Script implementation - Steps 1-5
+# ================================================================================
+# SHELL SCRIPT - DPX New Project Creator
+# ================================================================================
+# Automated project template generator for hardware and software projects
+# ================================================================================
+# PROJECT: DPX_NEW_PROJECT
+# ================================================================================
+#
+# File: dpx_newProject.sh
+# Purpose: Copy and customize project templates for new DPX hardware/software projects
+# Dependencies: dpx_readme_template folder, bash, sed
+#
+#
+#
+# ================================================================================
 
 # Function to perform string replacement in README.md
 replace_readme_strings() {
@@ -239,6 +58,32 @@ replace_readme_strings() {
         echo "  String replacement completed"
     fi
 }
+
+# Resolve actual script location (handle symlinks)
+if [ -L "${BASH_SOURCE[0]}" ]; then
+    # Script is a symlink, resolve to actual location
+    ACTUAL_SCRIPT="$(readlink "${BASH_SOURCE[0]}")"
+    if [[ "$ACTUAL_SCRIPT" != /* ]]; then
+        # Relative symlink, make it absolute
+        ACTUAL_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd "$(dirname "$ACTUAL_SCRIPT")" && pwd)/$(basename "$ACTUAL_SCRIPT")"
+    fi
+else
+    # Script is not a symlink
+    ACTUAL_SCRIPT="${BASH_SOURCE[0]}"
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$ACTUAL_SCRIPT")" && pwd)"
+
+# Read version from VERSION file in project root
+VERSION_FILE="$(dirname "$SCRIPT_DIR")/VERSION"
+if [ -f "$VERSION_FILE" ]; then
+    SCRIPT_VERSION=$(cat "$VERSION_FILE")
+    echo "DPX New Project Creator $SCRIPT_VERSION"
+else
+    SCRIPT_VERSION="unknown"
+    echo "DPX New Project Creator (version unknown)"
+fi
+echo ""
 
 # Check for correct number of arguments
 if [ $# -lt 2 ]; then
@@ -318,21 +163,6 @@ elif [ "$PROJECT_TYPE" != "-H" ] && [ "$PROJECT_TYPE" != "-S" ]; then
     echo "Error: Project type must be -H (hardware) or -S (software)"
     exit 1
 fi
-
-# Resolve actual script location (handle symlinks)
-if [ -L "${BASH_SOURCE[0]}" ]; then
-    # Script is a symlink, resolve to actual location
-    ACTUAL_SCRIPT="$(readlink "${BASH_SOURCE[0]}")"
-    if [[ "$ACTUAL_SCRIPT" != /* ]]; then
-        # Relative symlink, make it absolute
-        ACTUAL_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd "$(dirname "$ACTUAL_SCRIPT")" && pwd)/$(basename "$ACTUAL_SCRIPT")"
-    fi
-else
-    # Script is not a symlink
-    ACTUAL_SCRIPT="${BASH_SOURCE[0]}"
-fi
-
-SCRIPT_DIR="$(cd "$(dirname "$ACTUAL_SCRIPT")" && pwd)"
 
 # Environment variable overrides (for flexibility when symlinked or moved)
 if [ -n "$DPX_TEMPLATE_DIR" ]; then
