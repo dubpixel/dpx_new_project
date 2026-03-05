@@ -40,7 +40,6 @@
 #    - Software projects: README-software_template.md → README.md
 #    - CHANGELOG-dpx-template.md → CHANGELOG.md (always copied and renamed)
 #    - dpx_release_note_template.md → dpx_release_note_template.md (always copied as-is)
-#    - LICENSE.txt → LICENSE.txt (always copied as-is)
 #    - .gitignore → .gitignore (always copied as-is)
 #    - .gitattributes → .gitattributes (always copied as-is)
 #    - _config.yml → _config.yml (always copied as-is)
@@ -56,7 +55,6 @@
 #    - No renaming of folders - copied as-is with full contents
 #
 #    KEY FILES TO COPY AS-IS:
-#     - LICENSE.txt
 #     - .gitignore
 #     - .gitattributes
 #     - _config.yml
@@ -185,6 +183,11 @@
 #
 # User: "can you please fix this" (DPX_ROOT environment variable not finding template directory)
 #   → Fixed DPX_ROOT path logic to look for template at $DPX_ROOT/_....DPX_BLANK_PROJECT_TEMPLATE/dpx_readme_template
+#
+# User: "i want to change that the script copies the license file from the template folder. it should never copy any LICENSE.txt from dpx_readme_template" / "no you never want to copy a LICENSE.txt when setting up new porject. no license file"
+#   → Removed LICENSE.txt from documentation comments (lines 43, 59)
+#   → Removed LICENSE.txt copy command and verbose echo from Step 3 (lines 511-513)
+#   → New projects will not include any license file
 #
 
 # ================================================================================
@@ -507,10 +510,6 @@ fi
 
 # Step 3: Copy specific root level files as-is
 echo "Step 3: Copying root level files..."
-if [ "$VERBOSE" = true ]; then
-    echo "  Copying LICENSE.txt"
-fi
-cp "$TEMPLATE_DIR/LICENSE.txt" "$DEST_DIR/LICENSE.txt"
 if [ "$VERBOSE" = true ]; then
     echo "  Copying .gitignore"
 fi
