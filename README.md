@@ -198,14 +198,14 @@ dpx-new-project my_awesome_project -H -V -M "The coolest hardware project ever"
 ## Reflection
 
 * what did we learn? 
-  - AI directives are clutch!
-  - Make the AI echo back what it thinks you want it to do. then act.
-  - Echo prompts and actions to comments. 
+  - plan mode is key - agents.md is good 
+  - definitely ask agent to plan first, less mistakes. also ask to clairfy larger plan at least once. 
+  - only use claude (ha)
 * what do we like/hate?
-  - Really liked how clean the results were. Telling the ai to not jump ahead and try to lead was key. 
+  - realizing many months later that plan mode is a thing
 * what would/could we do differently?
-  - echo the prompts and actions to a separate file, along with a diff style record of what got changed? could make for somebig files.
-  - maybe we have ai commit to git each time instead 
+  - see roadmap
+  - embrace git [in process]
   <!-- ROADMAP -->
 ## Roadmap
 
@@ -213,9 +213,12 @@ dpx-new-project my_awesome_project -H -V -M "The coolest hardware project ever"
     - [x] verbose output flag
     - [x] search and replace readme.md file in lowercase with project name
     - [x] take initial tag line as command argument
-    - [ ] set to never copy license. projects initialize with no license.
+    - [x] set to never copy license. projects initialize with no license.
     - [ ] select from more than just h/s templates - -T name or something
     - [ ] take extended description from external file
+    - [x] create context from header and scrub that , remove prompts, 
+    - [x] add versioning echo and central version file
+    - [x] generated changelog from 
 
 See the [open issues](https://github.com/dubpixel/dpx_new_project/issues) for a full list of proposed features (and known issues).
 

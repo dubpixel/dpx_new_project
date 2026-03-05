@@ -5,6 +5,18 @@ All notable changes to the DPX New Project Creator will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.7] - 2026-03-05
+
+### Added
+- CONTEXT.md file in .github/ directory following AGENTS.md standards
+- Comprehensive architecture reference for AI agents
+- Structured sections: Project Overview, Architecture, Key Decisions, File Structure, Development Setup, Configuration, Common Operations
+
+### Changed
+- Cleaned up AGENTS.md context directive sections for better clarity
+- CONTEXT.md now follows clean, scannable format instead of verbose commentary style
+- Improved documentation structure per agent workflow standards
+
 ## [v0.5.6] - 2026-03-05
 
 ### Added
@@ -136,6 +148,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **v0.3.0**: Verbose mode, project file structure
 - **v0.1.0-v0.2.0**: Initial implementation, core file/folder copying
 
+[v0.5.7]: https://github.com/dubpixel/dpx_new_project/compare/v0.5.6...v0.5.7
 [v0.5.6]: https://github.com/dubpixel/dpx_new_project/compare/v0.5.5...v0.5.6
 [v0.5.5]: https://github.com/dubpixel/dpx_new_project/compare/v0.5.4...v0.5.5
 [v0.5.4]: https://github.com/dubpixel/dpx_new_project/compare/v0.5.3...v0.5.4
