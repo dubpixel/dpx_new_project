@@ -59,6 +59,164 @@ replace_readme_strings() {
     fi
 }
 
+# Function: interactive README template picker
+# $1 = readme_templates dir, $2 = default filename (basename) or empty
+# Prints selected filename to stdout; all prompts go to stderr
+select_readme_template() {
+    local readme_dir="$1"
+    local default_file="$2"
+
+    local files=()
+    while IFS= read -r f; do
+        files+=("$(basename "$f")")
+    done < <(find "$readme_dir" -maxdepth 1 -name "*.md" | sort)
+
+    if [ ${#files[@]} -eq 0 ]; then
+        echo "Warning: No .md files found in $readme_dir" >&2
+        echo ""
+        return
+    fi
+
+    echo "" >&2
+    echo "  Select a README template:" >&2
+    local i=1
+    for f in "${files[@]}"; do
+        local marker=""
+        [ "$f" = "$default_file" ] && marker="  [default]"
+        printf "    %d) %s%s\n" "$i" "$f" "$marker" >&2
+        ((i++))
+    done
+    echo "" >&2
+
+    # Find index of default
+    local default_idx=0
+    if [ -n "$default_file" ]; then
+        local j=1
+        for f in "${files[@]}"; do
+            if [ "$f" = "$default_file" ]; then
+                default_idx=$j
+                break
+            fi
+            ((j++))
+        done
+    fi
+
+    local choice
+    while true; do
+        if [ "$default_idx" -gt 0 ]; then
+            printf "  Enter number [default: %d]: " "$default_idx" >&2
+        else
+            printf "  Enter number: " >&2
+        fi
+        read -r choice </dev/tty
+        # Blank input → use default
+        if [ -z "$choice" ] && [ "$default_idx" -gt 0 ]; then
+            choice="$default_idx"
+        fi
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#files[@]}" ]; then
+            echo "${files[$((choice-1))]}"
+            return
+        fi
+        echo "  Invalid selection, try again." >&2
+    done
+}
+
+# Function: interactive code template picker (multi-select)
+# $1 = code_templates dir, $2 = destination dir for selected files
+pick_code_templates() {
+    local src_dir="$1"
+    local dest_dir="$2"
+
+    local files=()
+    while IFS= read -r f; do
+        local bn
+        bn="$(basename "$f")"
+        [[ "$bn" == .DS_Store ]] && continue
+        files+=("$bn")
+    done < <(find "$src_dir" -maxdepth 1 -type f | sort)
+
+    if [ ${#files[@]} -eq 0 ]; then
+        echo "  No code templates found, skipping."
+        return
+    fi
+
+    echo ""
+    echo "  Available code templates:"
+    local i=1
+    for f in "${files[@]}"; do
+        printf "    %d) %s\n" "$i" "$f"
+        ((i++))
+    done
+    echo "    0) Skip"
+    echo ""
+
+    local choices
+    printf "  Enter numbers (space-separated) or 0 to skip: "
+    read -r choices </dev/tty
+
+    if [ -z "$choices" ] || [ "$choices" = "0" ]; then
+        echo "  Skipping code templates."
+        return
+    fi
+
+    mkdir -p "$dest_dir"
+    for c in $choices; do
+        if [[ "$c" =~ ^[0-9]+$ ]] && [ "$c" -ge 1 ] && [ "$c" -le "${#files[@]}" ]; then
+            local fname="${files[$((c-1))]}"
+            cp "$src_dir/$fname" "$dest_dir/$fname"
+            echo "  Copied: $fname → $(basename "$dest_dir")/"
+        else
+            echo "  Skipping invalid selection: $c"
+        fi
+    done
+}
+
+# Function: interactive ini file picker (single-select)
+# $1 = ini_files dir, $2 = destination dir (project root)
+pick_ini_file() {
+    local src_dir="$1"
+    local dest_dir="$2"
+
+    local files=()
+    local paths=()
+    while IFS= read -r f; do
+        # Show as subdir/filename for clarity
+        files+=("$(basename "$(dirname "$f")")/$(basename "$f")")
+        paths+=("$f")
+    done < <(find "$src_dir" -name "*.ini" | sort)
+
+    if [ ${#files[@]} -eq 0 ]; then
+        echo "  No .ini files found in $src_dir, skipping."
+        return
+    fi
+
+    echo ""
+    echo "  Available ini files (PlatformIO configs):"
+    local i=1
+    for f in "${files[@]}"; do
+        printf "    %d) %s\n" "$i" "$f"
+        ((i++))
+    done
+    echo "    0) Skip"
+    echo ""
+
+    local choice
+    while true; do
+        printf "  Enter number or 0 to skip: "
+        read -r choice </dev/tty
+        if [ "$choice" = "0" ] || [ -z "$choice" ]; then
+            echo "  Skipping ini file."
+            return
+        fi
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#files[@]}" ]; then
+            cp "${paths[$((choice-1))]}" "$dest_dir/platformio.ini"
+            echo "  Copied: ${files[$((choice-1))]} → platformio.ini"
+            return
+        fi
+        echo "  Invalid selection, try again."
+    done
+}
+
 # Resolve actual script location (handle symlinks)
 if [ -L "${BASH_SOURCE[0]}" ]; then
     # Script is a symlink, resolve to actual location
@@ -85,15 +243,17 @@ else
 fi
 echo ""
 
-# Check for correct number of arguments
-if [ $# -lt 2 ]; then
-    echo "Usage: $0 <project_name> <-H|-S> [-V] [-M 'sassy tagline'] [-C 'project description']"
-    echo "  project_name: Name of the new project"
-    echo "  -H: Hardware project"
+# Check for minimum arguments (project name required)
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 <project_name> [-H|-S] [-P] [-C] [-V] [-M 'sassy tagline'] [-T 'project description']"
+    echo "  project_name: Name of the new project (required)"
+    echo "  -H: Hardware project (default if omitted)"
     echo "  -S: Software project"
+    echo "  -P: Interactively pick a README template"
+    echo "  -C: Create project in _...CODE directory instead of _...CIRCUIT_PROJECTS"
     echo "  -V: Verbose output (optional)"
     echo "  -M 'message': Sassy tagline for the project (optional)"
-    echo "  -C 'comment': Longer description for the project (optional)"
+    echo "  -T 'text': Longer description for the project (optional)"
     echo ""
     echo "Arguments can be in any order except project_name must be first"
     echo ""
@@ -103,8 +263,11 @@ if [ $# -lt 2 ]; then
     echo "  DPX_ROOT: Base directory containing dpx_readme_template folder"
     echo ""
     echo "Examples:"
-    echo "  $0 my_project -H                    # Create hardware project"
-    echo "  $0 my_app -S -V                     # Create software project with verbose output"
+    echo "  $0 my_project -H                        # Create hardware project"
+    echo "  $0 my_app -S -V                         # Create software project with verbose output"
+    echo "  $0 my_project -H -P                     # Hardware project, pick README interactively"
+    echo "  $0 my_app -S -C                         # Software project in _...CODE directory"
+    echo "  $0 my_project -T 'desc' -M 'tag'        # With description and tagline (defaults to -H)"
     echo "  DPX_PROJECTS_DIR=~/projects $0 my_project -H  # Create in specific directory"
     exit 1
 fi
@@ -116,6 +279,8 @@ PROJECT_TYPE=""
 VERBOSE=false
 SASSY_TAGLINE=""
 PROJECT_DESCRIPTION=""
+PICK_README=false
+USE_CODE_DIR=false
 
 # Parse remaining arguments in any order
 while [[ $# -gt 0 ]]; do
@@ -126,6 +291,14 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             PROJECT_TYPE="$1"
+            shift
+            ;;
+        -P)
+            PICK_README=true
+            shift
+            ;;
+        -C)
+            USE_CODE_DIR=true
             shift
             ;;
         -V)
@@ -140,9 +313,9 @@ while [[ $# -gt 0 ]]; do
             SASSY_TAGLINE="$2"
             shift 2
             ;;
-        -C)
+        -T)
             if [ -z "$2" ] || [[ "$2" == -* ]]; then
-                echo "Error: -C requires a description argument"
+                echo "Error: -T requires a text argument"
                 exit 1
             fi
             PROJECT_DESCRIPTION="$2"
@@ -155,13 +328,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Validate project type flag
+# Default to hardware project if no type specified
 if [ -z "$PROJECT_TYPE" ]; then
-    echo "Error: Must specify either -H (hardware) or -S (software)"
-    exit 1
-elif [ "$PROJECT_TYPE" != "-H" ] && [ "$PROJECT_TYPE" != "-S" ]; then
-    echo "Error: Project type must be -H (hardware) or -S (software)"
-    exit 1
+    PROJECT_TYPE="-H"
+    echo "No project type specified, defaulting to Hardware (-H)"
 fi
 
 # Environment variable overrides (for flexibility when symlinked or moved)
@@ -218,7 +388,29 @@ fi
 if [ -n "$DPX_PROJECTS_DIR" ]; then
     DEST_DIR="$DPX_PROJECTS_DIR/$PROJECT_NAME"
     echo "Using projects directory from DPX_PROJECTS_DIR: $DPX_PROJECTS_DIR"
-else
+elif [ "$USE_CODE_DIR" = true ]; then
+    # Walk up from script dir looking for a sibling _...CODE directory
+    CODE_ROOT=""
+    current_search="$SCRIPT_DIR"
+    while [ "$current_search" != "/" ]; do
+        parent="$(dirname "$current_search")"
+        if [ -d "$parent/_...CODE" ]; then
+            CODE_ROOT="$parent/_...CODE"
+            break
+        fi
+        current_search="$parent"
+    done
+
+    if [ -n "$CODE_ROOT" ]; then
+        DEST_DIR="$CODE_ROOT/$PROJECT_NAME"
+        echo "Using Code directory: $CODE_ROOT"
+    else
+        echo "Warning: Could not locate _...CODE directory, falling back to _...CIRCUIT_PROJECTS"
+        USE_CODE_DIR=false
+    fi
+fi
+
+if [ -z "$DEST_DIR" ]; then
     # Find the _...CIRCUIT_PROJECTS folder (the DPX root)
     current_search="$SCRIPT_DIR"
     while [ "$current_search" != "/" ]; do
@@ -248,6 +440,8 @@ if [ "$VERBOSE" = true ]; then
 else
     echo "  Verbose mode: OFF"
 fi
+if [ "$PICK_README" = true ]; then echo "  README picker: ON"; fi
+if [ "$USE_CODE_DIR" = true ]; then echo "  Code directory mode: ON"; fi
 if [ -n "$SASSY_TAGLINE" ]; then
     echo "  Sassy tagline: $SASSY_TAGLINE"
 fi
@@ -278,116 +472,137 @@ if [ "$VERBOSE" = true ]; then
     echo "  Created: $DEST_DIR"
 fi
 
-# Step 2: Copy all folders recursively (excluding .git)
+# Directories that are NEVER copied into new projects (template-internal only)
+ALWAYS_EXCLUDE=(".git" "readme_templates" "template_inspiration" "code_templates" "ini_files")
+
+# Helper: returns 0 (true) if rel_path starts with any always-excluded entry
+is_excluded() {
+    local rel="$1"
+    for excl in "${ALWAYS_EXCLUDE[@]}"; do
+        if [[ "$rel" == "$excl" ]] || [[ "$rel" == "$excl/"* ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Step 2: Copy folder structure and files
 echo "Step 2: Copying folder structure..."
-find "$TEMPLATE_DIR" -type d -name ".git" -prune -o -name ".idea" -prune -o -type d -print | while read dir; do
-    if [[ "$dir" != *".git"* ]] && [[ "$dir" != *".idea"* ]]; then
+
+if [ "$PROJECT_TYPE" = "-H" ]; then
+    # Hardware: only copy hardware/ and firmware/ trees
+    find "$TEMPLATE_DIR" -type d | while IFS= read -r dir; do
         rel_path="${dir#$TEMPLATE_DIR/}"
-        if [ "$rel_path" != "$TEMPLATE_DIR" ]; then
-            # For software projects (-S), skip hardware and firmware folders
-            if [ "$PROJECT_TYPE" = "-S" ]; then
-                if [[ "$rel_path" == "hardware"* ]] || [[ "$rel_path" == "firmware"* ]]; then
-                    if [ "$VERBOSE" = true ]; then
-                        echo "  Skipping directory (software project): $rel_path"
-                    fi
-                    continue
-                fi
-            fi
-            
-            if [ "$VERBOSE" = true ]; then
-                echo "  Creating directory: $rel_path"
-            fi
+        [ -z "$rel_path" ] && continue
+        is_excluded "$rel_path" && { [ "$VERBOSE" = true ] && echo "  Skipping excluded: $rel_path"; continue; }
+        if [[ "$rel_path" == "hardware"* ]] || [[ "$rel_path" == "firmware"* ]]; then
+            [ "$VERBOSE" = true ] && echo "  Creating directory: $rel_path"
             mkdir -p "$DEST_DIR/$rel_path"
         fi
-    fi
-done
+    done
+    # Create empty placeholder dirs
+    mkdir -p "$DEST_DIR/ibom" "$DEST_DIR/images"
+    [ "$VERBOSE" = true ] && echo "  Created placeholder dirs: ibom/ images/"
 
-# Copy all files in folders (excluding .git)
-echo "Step 2: Copying files in folders..."
-find "$TEMPLATE_DIR" -type f | while read file; do
-    if [[ "$file" != *".git/"* ]] && [[ "$file" != *".idea/"* ]]; then
+    echo "Step 2: Copying hardware/firmware files..."
+    find "$TEMPLATE_DIR" -type f | while IFS= read -r file; do
         rel_path="${file#$TEMPLATE_DIR/}"
-        # Skip root level files - they'll be handled separately
-        if [[ "$rel_path" == *"/"* ]]; then
-            # For software projects (-S), skip hardware and firmware files
-            if [ "$PROJECT_TYPE" = "-S" ]; then
-                if [[ "$rel_path" == "hardware/"* ]] || [[ "$rel_path" == "firmware/"* ]]; then
-                    if [ "$VERBOSE" = true ]; then
-                        echo "  Skipping file (software project): $rel_path"
-                    fi
-                    continue
-                fi
-            fi
-            
-            if [ "$VERBOSE" = true ]; then
-                echo "  Copying file: $rel_path"
-            fi
-            # Ensure parent directory exists
+        is_excluded "$rel_path" && { [ "$VERBOSE" = true ] && echo "  Skipping excluded file: $rel_path"; continue; }
+        if [[ "$rel_path" == "hardware/"* ]] || [[ "$rel_path" == "firmware/"* ]]; then
+            [ "$VERBOSE" = true ] && echo "  Copying file: $rel_path"
             mkdir -p "$(dirname "$DEST_DIR/$rel_path")"
             cp "$file" "$DEST_DIR/$rel_path"
         fi
+    done
+else
+    # Software: just create src/ and images/
+    echo "Step 2: Creating src/ for software project..."
+    mkdir -p "$DEST_DIR/src" "$DEST_DIR/images"
+    [ "$VERBOSE" = true ] && echo "  Created: src/ images/"
+fi
+
+# Step 3: Copy root level files
+echo "Step 3: Copying root level files..."
+for f in .gitignore .gitattributes _config.yml dpx_release_note_template.md Gemfile; do
+    if [ -f "$TEMPLATE_DIR/$f" ]; then
+        [ "$VERBOSE" = true ] && echo "  Copying $f"
+        cp "$TEMPLATE_DIR/$f" "$DEST_DIR/$f"
+    else
+        echo "  Warning: $f not found in template, skipping"
     fi
 done
 
-# For software projects, create a src folder instead of hardware/firmware
-if [ "$PROJECT_TYPE" = "-S" ]; then
-    echo "Step 2: Creating src folder for software project (instead of hardware/firmware)..."
-    mkdir -p "$DEST_DIR/src"
-    if [ "$VERBOSE" = true ]; then
-        echo "  Created src/ directory for software project (replacing hardware/firmware folders)"
+# Step 3b: Copy dot-directories (.github, .idea, .vscode) if present in template
+echo "Step 3b: Copying dot-directories..."
+for dotdir in .github .idea .vscode; do
+    if [ -d "$TEMPLATE_DIR/$dotdir" ]; then
+        [ "$VERBOSE" = true ] && echo "  Copying $dotdir/"
+        cp -r "$TEMPLATE_DIR/$dotdir" "$DEST_DIR/$dotdir"
+    else
+        [ "$VERBOSE" = true ] && echo "  $dotdir not found in template, skipping"
     fi
-fi
-
-# Step 3: Copy specific root level files as-is
-echo "Step 3: Copying root level files..."
-if [ "$VERBOSE" = true ]; then
-    echo "  Copying .gitignore"
-fi
-cp "$TEMPLATE_DIR/.gitignore" "$DEST_DIR/.gitignore"
-if [ "$VERBOSE" = true ]; then
-    echo "  Copying .gitattributes"
-fi
-cp "$TEMPLATE_DIR/.gitattributes" "$DEST_DIR/.gitattributes"
-if [ "$VERBOSE" = true ]; then
-    echo "  Copying _config.yml"
-fi
-cp "$TEMPLATE_DIR/_config.yml" "$DEST_DIR/_config.yml"
-if [ "$VERBOSE" = true ]; then
-    echo "  Copying dpx_release_note_template.md"
-fi
-cp "$TEMPLATE_DIR/dpx_release_note_template.md" "$DEST_DIR/dpx_release_note_template.md"
-if [ "$VERBOSE" = true ]; then
-    echo "  Copying Gemfile"
-fi
-cp "$TEMPLATE_DIR/Gemfile" "$DEST_DIR/Gemfile"
+done
 
 # Step 4: Copy and rename template-specific files based on project type
 echo "Step 4: Setting up project-specific files..."
 
-# Copy and rename CHANGELOG template
-if [ "$VERBOSE" = true ]; then
-    echo "  Copying and renaming CHANGELOG-dpx-template.md to CHANGELOG.md"
+# CHANGELOG
+if [ -f "$TEMPLATE_DIR/CHANGELOG-dpx-template.md" ]; then
+    [ "$VERBOSE" = true ] && echo "  Copying CHANGELOG-dpx-template.md → CHANGELOG.md"
+    cp "$TEMPLATE_DIR/CHANGELOG-dpx-template.md" "$DEST_DIR/CHANGELOG.md"
 fi
-cp "$TEMPLATE_DIR/CHANGELOG-dpx-template.md" "$DEST_DIR/CHANGELOG.md"
 
-# Copy and rename README template based on project type
-if [ "$PROJECT_TYPE" = "-H" ]; then
-    if [ "$VERBOSE" = true ]; then
-        echo "  Copying and renaming README-hardware_template.md to README.md"
+# README — pick source
+README_TEMPLATES_DIR="$TEMPLATE_DIR/readme_templates"
+
+if [ "$PICK_README" = true ]; then
+    # Determine default for pre-highlight based on project type
+    if [ "$PROJECT_TYPE" = "-H" ]; then
+        DEFAULT_README="README-dpx_hardware_template.md"
+    else
+        DEFAULT_README="README-dpx_software_template.md"
     fi
-    cp "$TEMPLATE_DIR/README-hardware_template.md" "$DEST_DIR/README.md"
-    echo "Using hardware README template"
+    echo "Step 4: Picking README template interactively..."
+    SELECTED_README=$(select_readme_template "$README_TEMPLATES_DIR" "$DEFAULT_README")
+    if [ -z "$SELECTED_README" ]; then
+        echo "  No selection made, using default for project type"
+        SELECTED_README="$DEFAULT_README"
+    fi
+    README_SRC="$README_TEMPLATES_DIR/$SELECTED_README"
+    [ "$VERBOSE" = true ] && echo "  Selected: $SELECTED_README"
 else
-    if [ "$VERBOSE" = true ]; then
-        echo "  Copying and renaming README-software_template.md to README.md"
+    if [ "$PROJECT_TYPE" = "-H" ]; then
+        README_SRC="$README_TEMPLATES_DIR/README-dpx_hardware_template.md"
+        echo "  Using hardware README template"
+    else
+        README_SRC="$README_TEMPLATES_DIR/README-dpx_software_template.md"
+        echo "  Using software README template"
     fi
-    cp "$TEMPLATE_DIR/README-software_template.md" "$DEST_DIR/README.md"
-    echo "Using software README template"
+fi
+
+if [ -f "$README_SRC" ]; then
+    [ "$VERBOSE" = true ] && echo "  Copying $(basename "$README_SRC") → README.md"
+    cp "$README_SRC" "$DEST_DIR/README.md"
+else
+    echo "  Warning: README source not found at $README_SRC"
 fi
 
 echo "Project $PROJECT_NAME created successfully at $DEST_DIR"
 
-# Step 5: Call string replacement function
+# Step 5: String replacement in README.md
 replace_readme_strings "$DEST_DIR/README.md" "$PROJECT_NAME" "$SASSY_TAGLINE" "$PROJECT_DESCRIPTION"
 
+# Step 6 & 7: Interactive template prompts
+if [ "$PROJECT_TYPE" = "-H" ]; then
+    echo "Step 6: Select an ini file to copy as platformio.ini (or skip)..."
+    pick_ini_file "$TEMPLATE_DIR/ini_files" "$DEST_DIR"
+
+    echo "Step 7: Select code templates to copy to firmware/src/ (or skip)..."
+    pick_code_templates "$TEMPLATE_DIR/code_templates" "$DEST_DIR/firmware/src"
+else
+    echo "Step 6: Select code templates to copy to src/ (or skip)..."
+    pick_code_templates "$TEMPLATE_DIR/code_templates" "$DEST_DIR/src"
+fi
+
+echo ""
 echo "Project setup complete!"

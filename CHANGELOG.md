@@ -5,6 +5,25 @@ All notable changes to the DPX New Project Creator will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.8] - 2026-03-17
+
+### Added
+- `-P` flag: interactive README template picker — scans `readme_templates/` and presents a numbered menu; pre-highlights the default for the project type (`-H`/`-S`) when combined
+- `-C` flag: boolean flag to set destination directory to `_...CODE` sibling instead of `_...CIRCUIT_PROJECTS`; falls back gracefully if not found
+- Interactive ini file picker (Step 6, `-H` only): scans `ini_files/` recursively, user selects one to copy to project root as `platformio.ini`; skippable
+- Interactive code template picker (Step 7 for `-H`, Step 6 for `-S`): multi-select from `code_templates/`; copies to `firmware/src/` or `src/` respectively
+- `select_readme_template()`, `pick_code_templates()`, `pick_ini_file()` functions
+
+### Changed
+- `-C` (description) renamed to `-T` (text) to free `-C` for the Code directory flag
+- `-H`/`-S` project type flags are now optional — defaults to `-H` (hardware) if omitted
+- Step 2 now only copies `hardware/` + `firmware/` trees for `-H`; creates `src/` only for `-S`
+- Always excludes `readme_templates/`, `template_inspiration/`, `code_templates/`, `ini_files/`, `.github/`, `.vscode/` from all generated projects
+- `ibom/` and `images/` created as empty placeholder dirs in all projects
+
+### Fixed
+- Step 4 referenced `README-hardware_template.md` and `README-software_template.md` at template root — files had been moved to `readme_templates/` with `dpx_` prefix; corrected to `readme_templates/README-dpx_hardware_template.md` and `README-dpx_software_template.md`
+
 ## [v0.5.7] - 2026-03-05
 
 ### Added
