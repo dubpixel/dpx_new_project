@@ -2,6 +2,44 @@
 
 This document provides operational directives for AI coding assistants (GitHub Copilot, Claude Code, Cursor, etc.) working on dubpixel projects. These rules ensure consistent workflow automation, code quality, and documentation maintenance across all repositories.
 
+---
+
+## PROJECT: DPX New Project Template
+
+**Purpose:** Template generator for standardized dubpixel hardware/software projects  
+**Version File:** `VERSION` (root directory)
+
+### Architecture (2-minute summary)
+
+Bash-based template generator (`src/dpx_newProject.sh`) that creates standardized dubpixel hardware/software projects with proper structure, documentation, and GitHub workflows. Uses Jekyll for docs.
+
+| Component | Location | Purpose | Notes |
+|-----------|----------|---------|-------|
+| Generator script | `src/dpx_newProject.sh` | Interactive project creation | All copy/rename logic centralized |
+| Hardware README | `README-hardware_template.md` | Template for hardware projects | Schematics, BOMs, fabrication files |
+| Software README | `README-software_template.md` | Template for software projects | API docs, setup instructions |
+| Changelog template | `CHANGELOG-dpx-template.md` | Template changelog | Copied to new projects |
+| GitHub templates | `.github/` | Issue/PR templates, workflows, AGENTS.md | Copied to new projects |
+
+### Key Decisions
+
+- **Dual README templates**: Hardware needs schematics/BOMs, software needs API docs - fundamentally different documentation needs
+- **.git excluded during copy**: New projects get fresh git history, prevents version control conflicts
+- **String replacement post-copy**: Generic template → customized project names immediately after copy
+
+### Common Operations
+
+**Create new project:** `./src/dpx_newProject.sh` (interactive prompts for type/name/path)
+
+**Modify template behavior:** Edit `src/dpx_newProject.sh` - all logic centralized
+
+**Add template files:** Add to repo, update `dpx_newProject.sh` if special handling needed
+
+**Template processing:**
+- Hardware projects: `README-hardware_template.md` → `README.md`
+- Software projects: `README-software_template.md` → `README.md`
+- Both: `CHANGELOG-dpx-template.md` → `CHANGELOG.md`
+- `.git` and `.idea` always excluded from copy
 
 ---
 
@@ -555,46 +593,13 @@ While working:
 - [ ] Update change logs in modified files
 - [ ] Keep changes small and focused
 - [ ] Checkpoint progress if task is large
-- [ ] Update CONTEXT.md if architecture changes
+- [ ] Update project context section if architecture changes
 
 After completing work:
 - [ ] Test/verify the changes
 - [ ] Update relevant documentation
 - [ ] Create PR with proper format
 - [ ] No credentials committed
-
----
-
-## 11. Project-Specific Context
-
-### Architecture
-
-Bash-based template generator (`src/dpx_newProject.sh`) that creates standardized dubpixel hardware/software projects with proper structure, documentation, and GitHub workflows. Uses Jekyll for docs.
-
-**Key Files:**
-- `src/dpx_newProject.sh` - Interactive project generator
-- `README-{hardware|software}_template.md` - Project type-specific templates
-- `CHANGELOG-dpx-template.md` - Template changelog
-- `.github/` - Issue/PR templates, workflows, AGENTS.md
-
-**Key Decisions:**
-- **Dual README templates**: Hardware needs schematics/BOMs, software needs API docs
-- **.git excluded during copy**: New projects get fresh git history
-- **String replacement post-copy**: Generic template → customized project names
-
-### Common Operations
-
-**Create new project:** `./src/dpx_newProject.sh` (interactive prompts)
-
-**Modify template behavior:** Edit `src/dpx_newProject.sh` (all copy/rename logic centralized)
-
-**Add template files:** Add to repo, update `dpx_newProject.sh` if special handling needed
-
-**Template processing:**
-- Hardware projects: `README-hardware_template.md` → `README.md`
-- Software projects: `README-software_template.md` → `README.md`
-- Both: `CHANGELOG-dpx-template.md` → `CHANGELOG.md`
-- `.git` and `.idea` always excluded from copy
 
 ---
 
