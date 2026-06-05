@@ -334,6 +334,11 @@ if [ -z "$PROJECT_TYPE" ]; then
     echo "No project type specified, defaulting to Hardware (-H)"
 fi
 
+# Software projects default to _...CODE directory unless explicitly overridden
+if [ "$PROJECT_TYPE" = "-S" ] && [ "$USE_CODE_DIR" = false ] && [ -z "$DPX_PROJECTS_DIR" ]; then
+    USE_CODE_DIR=true
+fi
+
 # Environment variable overrides (for flexibility when symlinked or moved)
 if [ -n "$DPX_TEMPLATE_DIR" ]; then
     TEMPLATE_DIR="$DPX_TEMPLATE_DIR"

@@ -27,6 +27,26 @@ Bash-based template generator (`src/dpx_newProject.sh`) that creates standardize
 - **.git excluded during copy**: New projects get fresh git history, prevents version control conflicts
 - **String replacement post-copy**: Generic template → customized project names immediately after copy
 
+### Script Flags
+
+`./src/dpx_newProject.sh <project_name> [flags]`
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-H` | Hardware project — copies `hardware/` + `firmware/` trees, prompts for `platformio.ini` and firmware code templates | Default if neither `-H` nor `-S` given |
+| `-S` | Software project — creates `src/` + `images/`, places project in `_...CODE` (not `_...CIRCUIT_PROJECTS`) | — |
+| `-P` | Interactively pick a README template from `readme_templates/` | Auto-selects based on project type |
+| `-C` | Force project into `_...CODE` directory (hardware projects use this to override default) | Auto-enabled for `-S` |
+| `-V` | Verbose output — shows every file copied and directory created | Off |
+| `-M 'text'` | Sassy tagline — replaces placeholder in README | — |
+| `-T 'text'` | Project description — replaces placeholder in README | — |
+
+**Destination directory resolution order:**
+1. `DPX_PROJECTS_DIR` env var (explicit override)
+2. `-C` flag (or `-S` type) → walks up tree to find `_...CODE/`
+3. Default → walks up tree to find `_...CIRCUIT_PROJECTS/`
+4. Fallback → current working directory
+
 ### Common Operations
 
 **Create new project:** `./src/dpx_newProject.sh` (interactive prompts for type/name/path)
@@ -36,10 +56,10 @@ Bash-based template generator (`src/dpx_newProject.sh`) that creates standardize
 **Add template files:** Add to repo, update `dpx_newProject.sh` if special handling needed
 
 **Template processing:**
-- Hardware projects: `README-hardware_template.md` → `README.md`
-- Software projects: `README-software_template.md` → `README.md`
+- Hardware projects: `README-dpx_hardware_template.md` → `README.md`
+- Software projects: `README-dpx_software_template.md` → `README.md`
 - Both: `CHANGELOG-dpx-template.md` → `CHANGELOG.md`
-- `.git` and `.idea` always excluded from copy
+- `.git`, `readme_templates`, `code_templates`, `ini_files` always excluded from copy
 
 ---
 
