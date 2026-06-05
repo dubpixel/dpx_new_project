@@ -410,8 +410,27 @@ elif [ "$USE_CODE_DIR" = true ]; then
         DEST_DIR="$CODE_ROOT/$PROJECT_NAME"
         echo "Using Code directory: $CODE_ROOT"
     else
-        echo "Warning: Could not locate _...CODE directory, falling back to _...CIRCUIT_PROJECTS"
-        USE_CODE_DIR=false
+        # If still not found and project type is -S, look harder by finding CIRCUIT_PROJECTS first
+        if [ "$PROJECT_TYPE" = "-S" ]; then
+            current_search="$SCRIPT_DIR"
+            while [ "$current_search" != "/" ]; do
+                if [[ "$(basename "$current_search")" == *"CIRCUIT_PROJECTS"* ]]; then
+                    PARENT_OF_CIRCUITS="$(dirname "$current_search")"
+                    if [ -d "$PARENT_OF_CIRCUITS/_...CODE" ]; then
+                        DEST_DIR="$PARENT_OF_CIRCUITS/_...CODE/$PROJECT_NAME"
+                        echo "Using Code directory: $PARENT_OF_CIRCUITS/_...CODE"
+                        break
+                    fi
+                fi
+                current_search="$(dirname "$current_search")"
+            done
+        fi
+
+        # Only fall back if we still don't have a destination
+        if [ -z "$DEST_DIR" ]; then
+            echo "Warning: Could not locate _...CODE directory, falling back to _...CIRCUIT_PROJECTS"
+            USE_CODE_DIR=false
+        fi
     fi
 fi
 
