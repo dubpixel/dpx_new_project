@@ -390,7 +390,11 @@ else
 fi
 
 # Determine destination directory
-if [ -n "$DPX_PROJECTS_DIR" ]; then
+# Software projects always go to CODE, never use DPX_PROJECTS_DIR
+if [ "$PROJECT_TYPE" = "-S" ] && [ "$USE_CODE_DIR" = true ]; then
+    # Software project with code dir mode — skip DPX_PROJECTS_DIR override
+    :
+elif [ -n "$DPX_PROJECTS_DIR" ]; then
     DEST_DIR="$DPX_PROJECTS_DIR/$PROJECT_NAME"
     echo "Using projects directory from DPX_PROJECTS_DIR: $DPX_PROJECTS_DIR"
 elif [ "$USE_CODE_DIR" = true ]; then
