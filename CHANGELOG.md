@@ -5,6 +5,12 @@ All notable changes to the DPX New Project Creator will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.11] - 2026-06-05
+
+### Fixed
+- Software projects (`-S`) unconditionally use `_...CODE` directory; now properly bypass `DPX_PROJECTS_DIR` env var override
+- Restructured destination resolution so USE_CODE_DIR logic runs first, preventing env vars from forcing software projects to CIRCUIT_PROJECTS
+
 ## [v0.5.10] - 2026-06-05
 
 ### Fixed

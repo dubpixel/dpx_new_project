@@ -334,9 +334,18 @@ if [ -z "$PROJECT_TYPE" ]; then
     echo "No project type specified, defaulting to Hardware (-H)"
 fi
 
-# Software projects default to _...CODE directory unless explicitly overridden
-if [ "$PROJECT_TYPE" = "-S" ] && [ "$USE_CODE_DIR" = false ] && [ -z "$DPX_PROJECTS_DIR" ]; then
+# Software projects default to _...CODE directory unless DPX_PROJECTS_DIR is explicitly set
+if [ "$PROJECT_TYPE" = "-S" ] && [ -z "$DPX_PROJECTS_DIR" ]; then
     USE_CODE_DIR=true
+fi
+
+# Derive DPX_SOFTWARE_DIR from DPX_PROJECTS_DIR if not explicitly set
+if [ -z "$DPX_SOFTWARE_DIR" ] && [ -n "$DPX_PROJECTS_DIR" ]; then
+    # Find parent of DPX_PROJECTS_DIR and look for _...CODE there
+    PROJECTS_PARENT="$(dirname "$DPX_PROJECTS_DIR")"
+    if [ -d "$PROJECTS_PARENT/_...CODE" ]; then
+        DPX_SOFTWARE_DIR="$PROJECTS_PARENT/_...CODE"
+    fi
 fi
 
 # Environment variable overrides (for flexibility when symlinked or moved)
@@ -390,11 +399,11 @@ else
 fi
 
 # Determine destination directory
-# Software projects always go to CODE, never use DPX_PROJECTS_DIR
-if [ "$PROJECT_TYPE" = "-S" ] && [ "$USE_CODE_DIR" = true ]; then
-    # Software project with code dir mode — skip DPX_PROJECTS_DIR override
-    :
-elif [ -n "$DPX_PROJECTS_DIR" ]; then
+# For software projects, prefer DPX_SOFTWARE_DIR; for hardware, prefer DPX_PROJECTS_DIR
+if [ "$PROJECT_TYPE" = "-S" ] && [ -n "$DPX_SOFTWARE_DIR" ]; then
+    DEST_DIR="$DPX_SOFTWARE_DIR/$PROJECT_NAME"
+    echo "Using software directory from DPX_SOFTWARE_DIR: $DPX_SOFTWARE_DIR"
+elif [ "$PROJECT_TYPE" != "-S" ] && [ -n "$DPX_PROJECTS_DIR" ]; then
     DEST_DIR="$DPX_PROJECTS_DIR/$PROJECT_NAME"
     echo "Using projects directory from DPX_PROJECTS_DIR: $DPX_PROJECTS_DIR"
 elif [ "$USE_CODE_DIR" = true ]; then

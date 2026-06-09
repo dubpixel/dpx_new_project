@@ -196,9 +196,37 @@ dpx-new-project my_awesome_project -H -V -M "The coolest hardware project ever"
 ```
 
 ### Environment Variables
-- `DPX_TEMPLATE_DIR`: Override template directory location
-- `DPX_PROJECTS_DIR`: Override where new projects are created
-- `DPX_ROOT`: Base directory containing dpx_readme_template folder
+
+- **`DPX_TEMPLATE_DIR`**: Override template directory location
+  ```bash
+  export DPX_TEMPLATE_DIR="/path/to/custom/templates"
+  ```
+
+- **`DPX_PROJECTS_DIR`**: Override where hardware projects are created (software projects always use `_...CODE`)
+  ```bash
+  export DPX_PROJECTS_DIR="$HOME/projects"
+  ```
+  This will place hardware projects in `$HOME/projects`, but software projects (created with `-S`) will always go to `_...CODE` regardless of this setting.
+
+- **`DPX_ROOT`**: Base directory containing dpx_readme_template folder
+  ```bash
+  export DPX_ROOT="/path/to/_.DUBPIXEL"
+  ```
+
+#### Setting Permanent Environment Variables
+
+Add to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+```bash
+# DPX Project Generator
+export DPX_ROOT="/path/to/_.DUBPIXEL"
+export DPX_PROJECTS_DIR="$HOME/projects"  # optional
+export DPX_TEMPLATE_DIR="$DPX_ROOT/_...CIRCUIT_PROJECTS/_....DPX_BLANK_PROJECT_TEMPLATE/dpx_readme_template"
+```
+
+Then reload:
+```bash
+source ~/.zshrc
+```
 <!-- REFLECTION -->
 ## Reflection
 
