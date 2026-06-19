@@ -2,6 +2,64 @@
 
 This document provides operational directives for AI coding assistants (GitHub Copilot, Claude Code, Cursor, etc.) working on dubpixel projects. These rules ensure consistent workflow automation, code quality, and documentation maintenance across all repositories.
 
+---
+
+## PROJECT: DPX New Project Template
+
+**Purpose:** Template generator for standardized dubpixel hardware/software projects  
+**Version File:** `VERSION` (root directory)
+
+### Architecture (2-minute summary)
+
+Bash-based template generator (`src/dpx_newProject.sh`) that creates standardized dubpixel hardware/software projects with proper structure, documentation, and GitHub workflows. Uses Jekyll for docs.
+
+| Component | Location | Purpose | Notes |
+|-----------|----------|---------|-------|
+| Generator script | `src/dpx_newProject.sh` | Interactive project creation | All copy/rename logic centralized |
+| Hardware README | `README-hardware_template.md` | Template for hardware projects | Schematics, BOMs, fabrication files |
+| Software README | `README-software_template.md` | Template for software projects | API docs, setup instructions |
+| Changelog template | `CHANGELOG-dpx-template.md` | Template changelog | Copied to new projects |
+| GitHub templates | `.github/` | Issue/PR templates, workflows, AGENTS.md | Copied to new projects |
+
+### Key Decisions
+
+- **Dual README templates**: Hardware needs schematics/BOMs, software needs API docs - fundamentally different documentation needs
+- **.git excluded during copy**: New projects get fresh git history, prevents version control conflicts
+- **String replacement post-copy**: Generic template → customized project names immediately after copy
+
+### Script Flags
+
+`./src/dpx_newProject.sh <project_name> [flags]`
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-H` | Hardware project — copies `hardware/` + `firmware/` trees, prompts for `platformio.ini` and firmware code templates | Default if neither `-H` nor `-S` given |
+| `-S` | Software project — creates `src/` + `images/`, places project in `_...CODE` (not `_...CIRCUIT_PROJECTS`) | — |
+| `-P` | Interactively pick a README template from `readme_templates/` | Auto-selects based on project type |
+| `-C` | Force project into `_...CODE` directory (hardware projects use this to override default) | Auto-enabled for `-S` |
+| `-V` | Verbose output — shows every file copied and directory created | Off |
+| `-M 'text'` | Sassy tagline — replaces placeholder in README | — |
+| `-T 'text'` | Project description — replaces placeholder in README | — |
+
+**Destination directory resolution order:**
+1. `DPX_PROJECTS_DIR` env var (explicit override)
+2. `-C` flag (or `-S` type) → walks up tree to find `_...CODE/`
+3. Default → walks up tree to find `_...CIRCUIT_PROJECTS/`
+4. Fallback → current working directory
+
+### Common Operations
+
+**Create new project:** `./src/dpx_newProject.sh` (interactive prompts for type/name/path)
+
+**Modify template behavior:** Edit `src/dpx_newProject.sh` - all logic centralized
+
+**Add template files:** Add to repo, update `dpx_newProject.sh` if special handling needed
+
+**Template processing:**
+- Hardware projects: `README-dpx_hardware_template.md` → `README.md`
+- Software projects: `README-dpx_software_template.md` → `README.md`
+- Both: `CHANGELOG-dpx-template.md` → `CHANGELOG.md`
+- `.git`, `readme_templates`, `code_templates`, `ini_files` always excluded from copy
 
 ---
 
@@ -340,46 +398,27 @@ All code files must include a comprehensive header comment section:
 
 ---
 
-## 4. CONTEXT.md Maintenance
+## 4. Documentation Standards
 
-Every project should have a `CONTEXT.md` file in the root directory. This is the **architecture reference for agents**, not a conversation log.
+### Project Context Documentation
 
-### What CONTEXT.md Should Contain
+Project-specific architecture, decisions, and operational knowledge should live in this AGENTS.md file (see Section 11 below). This keeps rules and context unified in one scannable document.
 
-```markdown
-# [Project Name] - System Reference
+**When to use a separate CONTEXT.md:**
+Only create a separate `CONTEXT.md` if reference data becomes large enough to be noisy:
+- Long IP/VLAN tables
+- Full API response examples  
+- Hardware pinout references
+- Extensive data schemas
 
-## Project Overview
-[One-line summary of what this project does]
+If you create CONTEXT.md for overflow, add a reference in Section 11: "See CONTEXT.md for full network topology."
 
-## Architecture
-[Current tech stack, how components connect, data flow]
-
-## Key Decisions
-[Why we chose X over Y - rationale only, no timestamps or conversation history]
-
-## Domain Model
-[Core concepts, terminology specific to this project]
-
-## File Structure
-[Important directories and what they contain]
-
-## Development Setup
-[How to install, configure, run, and test]
-
-## Configuration
-[Environment variables, config files, credentials location]
-
-## Common Operations
-[Frequently needed commands or procedures]
-```
-
-### How to Maintain CONTEXT.md
+### How to Document Project Context
 
 **DO:**
 - ✅ Keep it clean, factual, and scannable
 - ✅ Update when architecture changes
-- ✅ Add new sections when you learn important project details
+- ✅ Add information when you learn important project details
 - ✅ Use tables, code blocks, and clear headings
 - ✅ Think: "What does the next agent need to know?"
 - ✅ Write in present tense, authoritative voice
@@ -574,7 +613,7 @@ While working:
 - [ ] Update change logs in modified files
 - [ ] Keep changes small and focused
 - [ ] Checkpoint progress if task is large
-- [ ] Update CONTEXT.md if architecture changes
+- [ ] Update project context section if architecture changes
 
 After completing work:
 - [ ] Test/verify the changes

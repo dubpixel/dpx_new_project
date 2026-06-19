@@ -146,21 +146,26 @@ Additionally the ai was fuly briefed with an extensive set of paramaters about h
 
 ### Basic Usage
 ```bash
-./dpx_newProject.sh <project_name> <-H|-S> [-V] [-M 'sassy tagline'] [-C 'project description']
+./dpx_newProject.sh <project_name> [-H|-S] [-P] [-C] [-V] [-M 'sassy tagline'] [-T 'project description']
 ```
 
 **Arguments:**
 - `project_name`: Name of the new project (required, first argument)
-- `-H`: Hardware project
-- `-S`: Software project  
+- `-H`: Hardware project (default if omitted)
+- `-S`: Software project
+- `-P`: Interactively pick a README template from the readme_templates directory
+- `-C`: Create project in `_...CODE` directory instead of `_...CIRCUIT_PROJECTS`
 - `-V`: Verbose output (optional)
 - `-M 'message'`: Sassy tagline for the project (optional)
-- `-C 'comment'`: Longer description for the project (optional)
+- `-T 'text'`: Longer description for the project (optional)
 
 **Examples:**
 ```bash
-./dpx_newProject.sh gendrigus_500 -V -H
-./dpx_newProject.sh my_app -S -M "The coolest software ever" -C "A comprehensive solution for all your needs"
+./dpx_newProject.sh gendrigus_500 -H -V
+./dpx_newProject.sh my_app -S -M "The coolest software ever" -T "A comprehensive solution for all your needs"
+./dpx_newProject.sh my_project -H -P              # pick README template interactively
+./dpx_newProject.sh my_code_thing -S -C           # create in _...CODE directory
+./dpx_newProject.sh quick_hw                      # no flags — defaults to hardware
 ```
 
 ### Global Installation (Symlink Setup)
@@ -191,9 +196,37 @@ dpx-new-project my_awesome_project -H -V -M "The coolest hardware project ever"
 ```
 
 ### Environment Variables
-- `DPX_TEMPLATE_DIR`: Override template directory location
-- `DPX_PROJECTS_DIR`: Override where new projects are created  
-- `DPX_ROOT`: Base directory containing dpx_readme_template folder
+
+- **`DPX_TEMPLATE_DIR`**: Override template directory location
+  ```bash
+  export DPX_TEMPLATE_DIR="/path/to/custom/templates"
+  ```
+
+- **`DPX_PROJECTS_DIR`**: Override where hardware projects are created (software projects always use `_...CODE`)
+  ```bash
+  export DPX_PROJECTS_DIR="$HOME/projects"
+  ```
+  This will place hardware projects in `$HOME/projects`, but software projects (created with `-S`) will always go to `_...CODE` regardless of this setting.
+
+- **`DPX_ROOT`**: Base directory containing dpx_readme_template folder
+  ```bash
+  export DPX_ROOT="/path/to/_.DUBPIXEL"
+  ```
+
+#### Setting Permanent Environment Variables
+
+Add to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+```bash
+# DPX Project Generator
+export DPX_ROOT="/path/to/_.DUBPIXEL"
+export DPX_PROJECTS_DIR="$HOME/projects"  # optional
+export DPX_TEMPLATE_DIR="$DPX_ROOT/_...CIRCUIT_PROJECTS/_....DPX_BLANK_PROJECT_TEMPLATE/dpx_readme_template"
+```
+
+Then reload:
+```bash
+source ~/.zshrc
+```
 <!-- REFLECTION -->
 ## Reflection
 
@@ -214,7 +247,11 @@ dpx-new-project my_awesome_project -H -V -M "The coolest hardware project ever"
     - [x] search and replace readme.md file in lowercase with project name
     - [x] take initial tag line as command argument
     - [x] set to never copy license. projects initialize with no license.
-    - [ ] select from more than just h/s templates - -T name or something
+    - [x] select from more than just h/s templates - `-P` interactive readme picker
+    - [x] `-T` text description flag (renamed from `-C`)
+    - [x] `-C` flag to target `_...CODE` directory as destination
+    - [x] interactive ini file picker for hardware projects
+    - [x] interactive code template picker for hardware and software projects
     - [ ] take extended description from external file
     - [x] create context from header and scrub that , remove prompts, 
     - [x] add versioning echo and central version file

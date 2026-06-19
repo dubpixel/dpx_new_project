@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": ".",
+			"name": "dpx_new_project"
+		},
+		{
+			"path": "../dpx_readme_template",
+			"name": "TEMPLATE"
+		}
+	],
+	"settings": {}
+}
