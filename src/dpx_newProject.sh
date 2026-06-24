@@ -245,10 +245,11 @@ echo ""
 
 # Check for minimum arguments (project name required)
 if [ $# -lt 1 ]; then
-    echo "Usage: $0 <project_name> [-H|-S] [-P] [-C] [-V] [-M 'sassy tagline'] [-T 'project description']"
+    echo "Usage: $0 <project_name> [-H|-S|-D] [-P] [-C] [-V] [-M 'sassy tagline'] [-T 'project description']"
     echo "  project_name: Name of the new project (required)"
     echo "  -H: Hardware project (default if omitted)"
     echo "  -S: Software project"
+    echo "  -D: 3D project — creates src/STL/ structure, places in _.DPX_3d_LIB"
     echo "  -P: Interactively pick a README template"
     echo "  -C: Create project in _...CODE directory instead of _...CIRCUIT_PROJECTS"
     echo "  -V: Verbose output (optional)"
@@ -261,12 +262,14 @@ if [ $# -lt 1 ]; then
     echo "  DPX_TEMPLATE_DIR: Override template directory location"
     echo "  DPX_PROJECTS_DIR: Override where new projects are created"
     echo "  DPX_ROOT: Base directory containing dpx_readme_template folder"
+    echo "  DPX_3D_DIR: Override where new 3D projects are created"
     echo ""
     echo "Examples:"
     echo "  $0 my_project -H                        # Create hardware project"
     echo "  $0 my_app -S -V                         # Create software project with verbose output"
     echo "  $0 my_project -H -P                     # Hardware project, pick README interactively"
     echo "  $0 my_app -S -C                         # Software project in _...CODE directory"
+    echo "  $0 my_model -D                          # 3D project in _.DPX_3d_LIB"
     echo "  $0 my_project -T 'desc' -M 'tag'        # With description and tagline (defaults to -H)"
     echo "  DPX_PROJECTS_DIR=~/projects $0 my_project -H  # Create in specific directory"
     exit 1
@@ -285,9 +288,9 @@ USE_CODE_DIR=false
 # Parse remaining arguments in any order
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -H|-S)
+        -H|-S|-D)
             if [ -n "$PROJECT_TYPE" ]; then
-                echo "Error: Cannot specify both -H and -S"
+                echo "Error: Cannot specify more than one project type (-H, -S, -D)"
                 exit 1
             fi
             PROJECT_TYPE="$1"
@@ -337,6 +340,12 @@ fi
 # Software projects default to _...CODE directory unless DPX_PROJECTS_DIR is explicitly set
 if [ "$PROJECT_TYPE" = "-S" ] && [ -z "$DPX_PROJECTS_DIR" ]; then
     USE_CODE_DIR=true
+fi
+
+# 3D projects default to _.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS unless DPX_3D_DIR is explicitly set
+USE_3D_DIR=false
+if [ "$PROJECT_TYPE" = "-D" ] && [ -z "$DPX_3D_DIR" ]; then
+    USE_3D_DIR=true
 fi
 
 # Derive DPX_SOFTWARE_DIR from DPX_PROJECTS_DIR if not explicitly set
@@ -399,13 +408,53 @@ else
 fi
 
 # Determine destination directory
-# For software projects, prefer DPX_SOFTWARE_DIR; for hardware, prefer DPX_PROJECTS_DIR
-if [ "$PROJECT_TYPE" = "-S" ] && [ -n "$DPX_SOFTWARE_DIR" ]; then
+# For software projects, prefer DPX_SOFTWARE_DIR; for hardware, prefer DPX_PROJECTS_DIR; for 3D, prefer DPX_3D_DIR
+if [ "$PROJECT_TYPE" = "-D" ] && [ -n "$DPX_3D_DIR" ]; then
+    DEST_DIR="$DPX_3D_DIR/$PROJECT_NAME"
+    echo "Using 3D directory from DPX_3D_DIR: $DPX_3D_DIR"
+elif [ "$PROJECT_TYPE" = "-S" ] && [ -n "$DPX_SOFTWARE_DIR" ]; then
     DEST_DIR="$DPX_SOFTWARE_DIR/$PROJECT_NAME"
     echo "Using software directory from DPX_SOFTWARE_DIR: $DPX_SOFTWARE_DIR"
-elif [ "$PROJECT_TYPE" != "-S" ] && [ -n "$DPX_PROJECTS_DIR" ]; then
+elif [ "$PROJECT_TYPE" != "-S" ] && [ "$PROJECT_TYPE" != "-D" ] && [ -n "$DPX_PROJECTS_DIR" ]; then
     DEST_DIR="$DPX_PROJECTS_DIR/$PROJECT_NAME"
     echo "Using projects directory from DPX_PROJECTS_DIR: $DPX_PROJECTS_DIR"
+elif [ "$USE_3D_DIR" = true ]; then
+    # Walk up from script dir looking for _.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS
+    THREE_D_ROOT=""
+    current_search="$SCRIPT_DIR"
+    while [ "$current_search" != "/" ]; do
+        parent="$(dirname "$current_search")"
+        if [ -d "$parent/_.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS" ]; then
+            THREE_D_ROOT="$parent/_.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS"
+            break
+        fi
+        current_search="$parent"
+    done
+
+    if [ -n "$THREE_D_ROOT" ]; then
+        DEST_DIR="$THREE_D_ROOT/$PROJECT_NAME"
+        echo "Using 3D directory: $THREE_D_ROOT"
+    else
+        # Fallback: find CIRCUIT_PROJECTS then look for _.DPX_3d_LIB at the same parent level
+        current_search="$SCRIPT_DIR"
+        while [ "$current_search" != "/" ]; do
+            if [[ "$(basename "$current_search")" == *"CIRCUIT_PROJECTS"* ]]; then
+                PARENT_OF_CIRCUITS="$(dirname "$current_search")"
+                if [ -d "$PARENT_OF_CIRCUITS/_.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS" ]; then
+                    DEST_DIR="$PARENT_OF_CIRCUITS/_.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS/$PROJECT_NAME"
+                    echo "Using 3D directory: $PARENT_OF_CIRCUITS/_.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS"
+                    break
+                fi
+            fi
+            current_search="$(dirname "$current_search")"
+        done
+
+        # Only fall back if we still don't have a destination
+        if [ -z "$DEST_DIR" ]; then
+            echo "Warning: Could not locate _.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS, falling back to _...CIRCUIT_PROJECTS"
+            USE_3D_DIR=false
+        fi
+    fi
 elif [ "$USE_CODE_DIR" = true ]; then
     # Walk up from script dir looking for a sibling _...CODE directory
     CODE_ROOT=""
@@ -479,6 +528,7 @@ else
 fi
 if [ "$PICK_README" = true ]; then echo "  README picker: ON"; fi
 if [ "$USE_CODE_DIR" = true ]; then echo "  Code directory mode: ON"; fi
+if [ "$USE_3D_DIR" = true ]; then echo "  3D directory mode: ON"; fi
 if [ -n "$SASSY_TAGLINE" ]; then
     echo "  Sassy tagline: $SASSY_TAGLINE"
 fi
@@ -500,7 +550,13 @@ if [ -d "$DEST_DIR" ]; then
 fi
 
 echo "Creating new project: $PROJECT_NAME"
-echo "Project type: $([ "$PROJECT_TYPE" = "-H" ] && echo "Hardware" || echo "Software")"
+if [ "$PROJECT_TYPE" = "-H" ]; then
+    echo "Project type: Hardware"
+elif [ "$PROJECT_TYPE" = "-D" ]; then
+    echo "Project type: 3D"
+else
+    echo "Project type: Software"
+fi
 
 # Step 1: Create destination directory
 echo "Step 1: Creating destination directory..."
@@ -551,6 +607,11 @@ if [ "$PROJECT_TYPE" = "-H" ]; then
             cp "$file" "$DEST_DIR/$rel_path"
         fi
     done
+elif [ "$PROJECT_TYPE" = "-D" ]; then
+    # 3D: create src/STL/ and images/
+    echo "Step 2: Creating src/STL/ for 3D project..."
+    mkdir -p "$DEST_DIR/src/STL" "$DEST_DIR/images"
+    [ "$VERBOSE" = true ] && echo "  Created: src/STL/ images/"
 else
     # Software: just create src/ and images/
     echo "Step 2: Creating src/ for software project..."
@@ -596,6 +657,8 @@ if [ "$PICK_README" = true ]; then
     # Determine default for pre-highlight based on project type
     if [ "$PROJECT_TYPE" = "-H" ]; then
         DEFAULT_README="README-dpx_hardware_template.md"
+    elif [ "$PROJECT_TYPE" = "-D" ]; then
+        DEFAULT_README="README-dpx_3d_template.md"
     else
         DEFAULT_README="README-dpx_software_template.md"
     fi
@@ -611,6 +674,9 @@ else
     if [ "$PROJECT_TYPE" = "-H" ]; then
         README_SRC="$README_TEMPLATES_DIR/README-dpx_hardware_template.md"
         echo "  Using hardware README template"
+    elif [ "$PROJECT_TYPE" = "-D" ]; then
+        README_SRC="$README_TEMPLATES_DIR/README-dpx_3d_template.md"
+        echo "  Using 3D README template"
     else
         README_SRC="$README_TEMPLATES_DIR/README-dpx_software_template.md"
         echo "  Using software README template"
@@ -636,6 +702,8 @@ if [ "$PROJECT_TYPE" = "-H" ]; then
 
     echo "Step 7: Select code templates to copy to firmware/src/ (or skip)..."
     pick_code_templates "$TEMPLATE_DIR/code_templates" "$DEST_DIR/firmware/src"
+elif [ "$PROJECT_TYPE" = "-D" ]; then
+    echo "Step 6: 3D project — no code templates to select."
 else
     echo "Step 6: Select code templates to copy to src/ (or skip)..."
     pick_code_templates "$TEMPLATE_DIR/code_templates" "$DEST_DIR/src"
