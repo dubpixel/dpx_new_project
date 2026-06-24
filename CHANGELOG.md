@@ -5,6 +5,16 @@ All notable changes to the DPX New Project Creator will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.0] - 2026-06-24
+
+### Added
+- `-D` flag: 3D project type — creates `src/STL/` + `images/` structure, skips code template prompts
+- 3D projects auto-resolve destination to `_.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS/` by walking up the directory tree (same pattern as `-S` finding `_...CODE`); falls back gracefully to `_...CIRCUIT_PROJECTS`
+- `DPX_3D_DIR` env var for explicit 3D project destination override
+- `README-dpx_3d_template.md` — dedicated 3D README template with print settings table (slicer, material, layer height, infill, supports, bed adhesion, print time)
+- Updated help text with `-D` examples and `DPX_3D_DIR` env var documentation
+- Updated AGENTS.md: `-D` flag row, `DPX_3D_DIR` in destination resolution order, 3D template processing entry
+
 ## [v0.5.11] - 2026-06-05
 
 ### Fixed

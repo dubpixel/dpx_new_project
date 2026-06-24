@@ -33,8 +33,9 @@ Bash-based template generator (`src/dpx_newProject.sh`) that creates standardize
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-H` | Hardware project — copies `hardware/` + `firmware/` trees, prompts for `platformio.ini` and firmware code templates | Default if neither `-H` nor `-S` given |
+| `-H` | Hardware project — copies `hardware/` + `firmware/` trees, prompts for `platformio.ini` and firmware code templates | Default if neither `-H`, `-S`, nor `-D` given |
 | `-S` | Software project — creates `src/` + `images/`, places project in `_...CODE` (not `_...CIRCUIT_PROJECTS`) | — |
+| `-D` | 3D project — creates `src/STL/` + `images/`, places project in `_.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS/`; no code template prompts | — |
 | `-P` | Interactively pick a README template from `readme_templates/` | Auto-selects based on project type |
 | `-C` | Force project into `_...CODE` directory (hardware projects use this to override default) | Auto-enabled for `-S` |
 | `-V` | Verbose output — shows every file copied and directory created | Off |
@@ -42,10 +43,12 @@ Bash-based template generator (`src/dpx_newProject.sh`) that creates standardize
 | `-T 'text'` | Project description — replaces placeholder in README | — |
 
 **Destination directory resolution order:**
-1. `DPX_PROJECTS_DIR` env var (explicit override)
-2. `-C` flag (or `-S` type) → walks up tree to find `_...CODE/`
-3. Default → walks up tree to find `_...CIRCUIT_PROJECTS/`
-4. Fallback → current working directory
+1. `DPX_3D_DIR` env var → 3D projects only (explicit override)
+2. `DPX_PROJECTS_DIR` env var → hardware/software (explicit override)
+3. `-D` type → walks up tree to find `_.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS/`
+4. `-C` flag (or `-S` type) → walks up tree to find `_...CODE/`
+5. Default → walks up tree to find `_...CIRCUIT_PROJECTS/`
+6. Fallback → current working directory
 
 ### Common Operations
 
@@ -58,7 +61,8 @@ Bash-based template generator (`src/dpx_newProject.sh`) that creates standardize
 **Template processing:**
 - Hardware projects: `README-dpx_hardware_template.md` → `README.md`
 - Software projects: `README-dpx_software_template.md` → `README.md`
-- Both: `CHANGELOG-dpx-template.md` → `CHANGELOG.md`
+- 3D projects: `README-dpx_3d_template.md` → `README.md`
+- All types: `CHANGELOG-dpx-template.md` → `CHANGELOG.md`
 - `.git`, `readme_templates`, `code_templates`, `ini_files` always excluded from copy
 
 ---
