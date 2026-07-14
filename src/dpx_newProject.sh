@@ -292,9 +292,32 @@ pick_recent_project() {
     done
 }
 
+# Function: append lines from src that do not already exist in dest
+# Prints count of appended lines to stdout
+merge_append_unique() {
+    local src="$1"
+    local dest="$2"
+    local count=0
+    while IFS= read -r line; do
+        if ! grep -qxF "$line" "$dest" 2>/dev/null; then
+            echo "$line" >> "$dest"
+            ((count++))
+        fi
+    done < "$src"
+    echo "$count"
+}
+
 # Function: copy a single file with conflict detection
 # $1 = source file, $2 = destination file, $3 = display label (optional)
-# Reads FORCE_OVERWRITE and OVERWRITE_ALL globals; may set OVERWRITE_ALL=true
+# Reads FORCE_OVERWRITE, OVERWRITE_ALL, MERGE_ALL globals
+# May set OVERWRITE_ALL=true or MERGE_ALL=true
+#
+# Conflict options:
+#   [y]es           — overwrite this file
+#   [n]o            — skip this file
+#   [m]erge         — append lines from template not already in destination
+#   [a]ll-overwrite — overwrite this file and all remaining without prompting
+#   [M]erge-all     — merge this file and all remaining without prompting
 copy_with_conflict() {
     local src="$1"
     local dest="$2"
@@ -314,18 +337,36 @@ copy_with_conflict() {
         return
     fi
 
+    if [ "$MERGE_ALL" = true ]; then
+        local added
+        added=$(merge_append_unique "$src" "$dest")
+        echo "  Merged: $label (+${added} lines)"
+        return
+    fi
+
     local choice
-    printf "  %s already exists — overwrite? [y]es / [n]o / [a]ll: " "$label"
+    printf "  %s exists — [y]es / [n]o / [m]erge / [a]ll-overwrite / [M]erge-all: " "$label"
     read -r choice </dev/tty
     case "$choice" in
         y|Y)
             cp "$src" "$dest"
             echo "  Overwritten: $label"
             ;;
+        m)
+            local added
+            added=$(merge_append_unique "$src" "$dest")
+            echo "  Merged: $label (+${added} lines)"
+            ;;
+        M)
+            MERGE_ALL=true
+            local added
+            added=$(merge_append_unique "$src" "$dest")
+            echo "  Merged: $label (+${added} lines)  (merge-all mode)"
+            ;;
         a|A)
             OVERWRITE_ALL=true
             cp "$src" "$dest"
-            echo "  Overwritten: $label  (all mode — remaining conflicts will overwrite)"
+            echo "  Overwritten: $label  (all-overwrite mode)"
             ;;
         *)
             echo "  Skipped: $label"
@@ -369,6 +410,7 @@ indoctrinate_project() {
     echo ""
 
     OVERWRITE_ALL=false
+    MERGE_ALL=false
 
     # Step I-1: Root files (mirrors Step 3 of new project creation)
     echo "Step 1: Stamping root files..."
