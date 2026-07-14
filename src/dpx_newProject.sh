@@ -593,9 +593,13 @@ if [ "$PROJECT_TYPE" = "-H" ]; then
             mkdir -p "$DEST_DIR/$rel_path"
         fi
     done
-    # Create empty placeholder dirs
+    # Create placeholder dirs and copy full images set for hardware projects
     mkdir -p "$DEST_DIR/ibom" "$DEST_DIR/images"
     [ "$VERBOSE" = true ] && echo "  Created placeholder dirs: ibom/ images/"
+    if [ -d "$TEMPLATE_DIR/images" ]; then
+        cp "$TEMPLATE_DIR/images/"* "$DEST_DIR/images/" 2>/dev/null
+        [ "$VERBOSE" = true ] && echo "  Copied template images to images/"
+    fi
 
     echo "Step 2: Copying hardware/firmware files..."
     find "$TEMPLATE_DIR" -type f | while IFS= read -r file; do
@@ -612,11 +616,23 @@ elif [ "$PROJECT_TYPE" = "-D" ]; then
     echo "Step 2: Creating src/STL/ for 3D project..."
     mkdir -p "$DEST_DIR/src/STL" "$DEST_DIR/images"
     [ "$VERBOSE" = true ] && echo "  Created: src/STL/ images/"
+    if [ -d "$TEMPLATE_DIR/images" ]; then
+        for img in logo.png front.png dubpixel_identicon.png; do
+            [ -f "$TEMPLATE_DIR/images/$img" ] && cp "$TEMPLATE_DIR/images/$img" "$DEST_DIR/images/$img"
+        done
+        [ "$VERBOSE" = true ] && echo "  Copied software template images (logo, front, identicon)"
+    fi
 else
-    # Software: just create src/ and images/
+    # Software: create src/ and images/, copy software-relevant placeholder images
     echo "Step 2: Creating src/ for software project..."
     mkdir -p "$DEST_DIR/src" "$DEST_DIR/images"
     [ "$VERBOSE" = true ] && echo "  Created: src/ images/"
+    if [ -d "$TEMPLATE_DIR/images" ]; then
+        for img in logo.png front.png dubpixel_identicon.png; do
+            [ -f "$TEMPLATE_DIR/images/$img" ] && cp "$TEMPLATE_DIR/images/$img" "$DEST_DIR/images/$img"
+        done
+        [ "$VERBOSE" = true ] && echo "  Copied software template images (logo, front, identicon)"
+    fi
 fi
 
 # Step 3: Copy root level files
@@ -632,7 +648,7 @@ done
 
 # Step 3b: Copy dot-directories (.github, .idea, .vscode) if present in template
 echo "Step 3b: Copying dot-directories..."
-for dotdir in .github .idea .vscode; do
+for dotdir in .github .vscode; do
     if [ -d "$TEMPLATE_DIR/$dotdir" ]; then
         [ "$VERBOSE" = true ] && echo "  Copying $dotdir/"
         cp -r "$TEMPLATE_DIR/$dotdir" "$DEST_DIR/$dotdir"
