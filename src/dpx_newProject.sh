@@ -469,7 +469,57 @@ indoctrinate_project() {
         fi
     fi
     if [ -f "$readme_src" ]; then
-        copy_with_conflict "$readme_src" "$target_dir/README.md" "README.md"
+        # README gets an extended conflict prompt — [t]emplate copies the template
+        # alongside the existing README.md as a reference without touching it
+        if [ ! -f "$target_dir/README.md" ] \
+            || [ "$FORCE_OVERWRITE" = true ] \
+            || [ "$OVERWRITE_ALL" = true ] \
+            || [ "$MERGE_ALL" = true ]; then
+            # No conflict or bulk mode active — use standard handler
+            copy_with_conflict "$readme_src" "$target_dir/README.md" "README.md"
+        else
+            # README.md exists and no bulk mode — show extended prompt with [t]emplate
+            local readme_choice
+            printf "  README.md exists — [y]es / [n]o / [m]erge / [t]emplate / [a]ll-overwrite / [M]erge-all: "
+            read -r readme_choice </dev/tty
+            case "$readme_choice" in
+                y|Y)
+                    cp "$readme_src" "$target_dir/README.md"
+                    echo "  Overwritten: README.md"
+                    ;;
+                m)
+                    local added
+                    added=$(merge_append_unique "$readme_src" "$target_dir/README.md")
+                    echo "  Merged: README.md (+${added} lines)"
+                    ;;
+                t|T)
+                    # Pick a template interactively and copy it alongside README.md
+                    echo "  Select a README template to copy alongside README.md:"
+                    local tpl_pick
+                    tpl_pick=$(select_readme_template "$README_TEMPLATES_DIR_I" "$(basename "$readme_src")")
+                    if [ -n "$tpl_pick" ]; then
+                        cp "$README_TEMPLATES_DIR_I/$tpl_pick" "$target_dir/$tpl_pick"
+                        echo "  Copied: $tpl_pick  (README.md unchanged)"
+                    else
+                        echo "  No template selected — README.md unchanged"
+                    fi
+                    ;;
+                M)
+                    MERGE_ALL=true
+                    local added
+                    added=$(merge_append_unique "$readme_src" "$target_dir/README.md")
+                    echo "  Merged: README.md (+${added} lines)  (merge-all mode)"
+                    ;;
+                a|A)
+                    OVERWRITE_ALL=true
+                    cp "$readme_src" "$target_dir/README.md"
+                    echo "  Overwritten: README.md  (all-overwrite mode)"
+                    ;;
+                *)
+                    echo "  Skipped: README.md"
+                    ;;
+            esac
+        fi
     else
         echo "  Warning: README source not found at $readme_src"
     fi
