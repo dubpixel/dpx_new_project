@@ -217,6 +217,319 @@ pick_ini_file() {
     done
 }
 
+# ================================================================================
+# INDOCTRINATE MODE FUNCTIONS
+# ================================================================================
+
+# Function: prompt user to select project type interactively
+# Prints -H, -S, or -D to stdout; all prompts go to stderr
+pick_project_type() {
+    echo "" >&2
+    echo "  Select project type:" >&2
+    echo "    1) Hardware (-H)" >&2
+    echo "    2) Software (-S)" >&2
+    echo "    3) 3D (-D)" >&2
+    echo "" >&2
+    local choice
+    while true; do
+        printf "  Enter number: " >&2
+        read -r choice </dev/tty
+        case "$choice" in
+            1) echo "-H"; return ;;
+            2) echo "-S"; return ;;
+            3) echo "-D"; return ;;
+            *) echo "  Invalid selection, try again." >&2 ;;
+        esac
+    done
+}
+
+# Function: list 10 most recently modified project dirs in a root folder
+# $1 = root directory to scan
+# Prints selected absolute path to stdout; all prompts go to stderr
+pick_recent_project() {
+    local root_dir="$1"
+
+    if [ ! -d "$root_dir" ]; then
+        echo "Error: Project root not found: $root_dir" >&2
+        return 1
+    fi
+
+    local dirs=()
+    while IFS= read -r d; do
+        dirs+=("$d")
+    done < <(
+        find "$root_dir" -maxdepth 1 -mindepth 1 -type d \
+            -not -name '.*' \
+            -not -name '_....DPX_BLANK_PROJECT_TEMPLATE' |
+        while IFS= read -r d; do
+            printf "%s\t%s\n" "$(stat -f "%m" "$d" 2>/dev/null || echo 0)" "$d"
+        done | sort -rn | head -10 | cut -f2-
+    )
+
+    if [ ${#dirs[@]} -eq 0 ]; then
+        echo "Error: No project folders found in $root_dir" >&2
+        return 1
+    fi
+
+    echo "" >&2
+    echo "  Recent projects in $(basename "$root_dir"):" >&2
+    local i=1
+    for d in "${dirs[@]}"; do
+        printf "    %d) %s\n" "$i" "$(basename "$d")" >&2
+        ((i++))
+    done
+    echo "" >&2
+
+    local choice
+    while true; do
+        printf "  Select a project (1-%d): " "${#dirs[@]}" >&2
+        read -r choice </dev/tty
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#dirs[@]}" ]; then
+            echo "${dirs[$((choice-1))]}"
+            return
+        fi
+        echo "  Invalid selection, try again." >&2
+    done
+}
+
+# Function: copy a single file with conflict detection
+# $1 = source file, $2 = destination file, $3 = display label (optional)
+# Reads FORCE_OVERWRITE and OVERWRITE_ALL globals; may set OVERWRITE_ALL=true
+copy_with_conflict() {
+    local src="$1"
+    local dest="$2"
+    local label="${3:-$(basename "$dest")}"
+
+    if [ ! -f "$dest" ]; then
+        mkdir -p "$(dirname "$dest")"
+        cp "$src" "$dest"
+        [ "$VERBOSE" = true ] && echo "  Copied: $label"
+        return
+    fi
+
+    # File exists — resolve conflict
+    if [ "$FORCE_OVERWRITE" = true ] || [ "$OVERWRITE_ALL" = true ]; then
+        cp "$src" "$dest"
+        echo "  Overwritten: $label"
+        return
+    fi
+
+    local choice
+    printf "  %s already exists — overwrite? [y]es / [n]o / [a]ll: " "$label"
+    read -r choice </dev/tty
+    case "$choice" in
+        y|Y)
+            cp "$src" "$dest"
+            echo "  Overwritten: $label"
+            ;;
+        a|A)
+            OVERWRITE_ALL=true
+            cp "$src" "$dest"
+            echo "  Overwritten: $label  (all mode — remaining conflicts will overwrite)"
+            ;;
+        *)
+            echo "  Skipped: $label"
+            ;;
+    esac
+}
+
+# Function: recursively copy a directory with per-file conflict detection
+# $1 = source dir, $2 = destination dir, $3 = display label
+copy_dir_with_conflict() {
+    local src_dir="$1"
+    local dest_dir="$2"
+    local label="$3"
+
+    if [ ! -d "$src_dir" ]; then
+        [ "$VERBOSE" = true ] && echo "  $label not found in template, skipping"
+        return
+    fi
+
+    echo "  Processing $label/..."
+    while IFS= read -r src_file; do
+        local rel="${src_file#$src_dir/}"
+        local dest_file="$dest_dir/$rel"
+        copy_with_conflict "$src_file" "$dest_file" "$label/$rel"
+    done < <(find "$src_dir" -type f | sort)
+}
+
+# Function: stamp template files into an existing project directory
+# $1 = absolute path to the target project directory
+indoctrinate_project() {
+    local target_dir="$1"
+
+    if [ ! -d "$target_dir" ]; then
+        echo "Error: Target directory does not exist: $target_dir"
+        exit 1
+    fi
+
+    echo ""
+    echo "Indoctrinating: $(basename "$target_dir")"
+    echo "  Path: $target_dir"
+    echo ""
+
+    OVERWRITE_ALL=false
+
+    # Step I-1: Root files (mirrors Step 3 of new project creation)
+    echo "Step 1: Stamping root files..."
+    for f in .gitignore .gitattributes _config.yml dpx_release_note_template.md Gemfile; do
+        if [ -f "$TEMPLATE_DIR/$f" ]; then
+            copy_with_conflict "$TEMPLATE_DIR/$f" "$target_dir/$f" "$f"
+        else
+            echo "  Warning: $f not found in template, skipping"
+        fi
+    done
+
+    # Step I-2: Dot-directories (mirrors Step 3b of new project creation)
+    echo "Step 2: Stamping dot-directories..."
+    for dotdir in .github .idea .vscode; do
+        if [ -d "$TEMPLATE_DIR/$dotdir" ]; then
+            copy_dir_with_conflict "$TEMPLATE_DIR/$dotdir" "$target_dir/$dotdir" "$dotdir"
+        else
+            [ "$VERBOSE" = true ] && echo "  $dotdir not in template, skipping"
+        fi
+    done
+
+    # Step I-3: CHANGELOG (mirrors Step 4 of new project creation)
+    echo "Step 3: Stamping CHANGELOG.md..."
+    if [ -f "$TEMPLATE_DIR/CHANGELOG-dpx-template.md" ]; then
+        copy_with_conflict "$TEMPLATE_DIR/CHANGELOG-dpx-template.md" "$target_dir/CHANGELOG.md" "CHANGELOG.md"
+    fi
+
+    # Step I-4: README (mirrors Step 4 — same template selection logic)
+    echo "Step 4: Stamping README.md..."
+    local readme_src=""
+    local README_TEMPLATES_DIR_I="$TEMPLATE_DIR/readme_templates"
+    if [ "$PICK_README" = true ]; then
+        local default_readme=""
+        if [ "$PROJECT_TYPE" = "-H" ]; then
+            default_readme="README-dpx_hardware_template.md"
+        elif [ "$PROJECT_TYPE" = "-D" ]; then
+            default_readme="README-dpx_3d_template.md"
+        else
+            default_readme="README-dpx_software_template.md"
+        fi
+        local selected_readme
+        selected_readme=$(select_readme_template "$README_TEMPLATES_DIR_I" "$default_readme")
+        [ -z "$selected_readme" ] && selected_readme="$default_readme"
+        readme_src="$README_TEMPLATES_DIR_I/$selected_readme"
+        [ "$VERBOSE" = true ] && echo "  Selected: $selected_readme"
+    else
+        if [ "$PROJECT_TYPE" = "-H" ]; then
+            readme_src="$README_TEMPLATES_DIR_I/README-dpx_hardware_template.md"
+            echo "  Using hardware README template"
+        elif [ "$PROJECT_TYPE" = "-D" ]; then
+            readme_src="$README_TEMPLATES_DIR_I/README-dpx_3d_template.md"
+            echo "  Using 3D README template"
+        else
+            readme_src="$README_TEMPLATES_DIR_I/README-dpx_software_template.md"
+            echo "  Using software README template"
+        fi
+    fi
+    if [ -f "$readme_src" ]; then
+        copy_with_conflict "$readme_src" "$target_dir/README.md" "README.md"
+    else
+        echo "  Warning: README source not found at $readme_src"
+    fi
+
+    # Step I-5: VERSION — written fresh as 0.1.0 (never copied from template)
+    echo "Step 5: Stamping VERSION..."
+    if [ -f "$target_dir/VERSION" ]; then
+        local existing_ver
+        existing_ver=$(cat "$target_dir/VERSION")
+        local ver_choice
+        printf "  VERSION exists (%s) — overwrite with 0.1.0? [y/n]: " "$existing_ver"
+        read -r ver_choice </dev/tty
+        if [[ "$ver_choice" =~ ^[yY]$ ]]; then
+            echo "0.1.0" > "$target_dir/VERSION"
+            echo "  Written: VERSION → 0.1.0"
+        else
+            echo "  Skipped: VERSION"
+        fi
+    else
+        echo "0.1.0" > "$target_dir/VERSION"
+        echo "  Created: VERSION → 0.1.0"
+    fi
+
+    # Step I-6: String replacement in README (mirrors Step 5)
+    if [ -f "$target_dir/README.md" ]; then
+        replace_readme_strings "$target_dir/README.md" "$PROJECT_NAME" "$SASSY_TAGLINE" "$PROJECT_DESCRIPTION"
+    fi
+
+    # Step I-7: images/ — always prompt; content differs by project type (mirrors Step 2)
+    echo "Step 7: images/ directory..."
+    local img_choice
+    if [ -d "$target_dir/images" ]; then
+        printf "  images/ already exists — populate/update it? [y/n]: "
+    else
+        printf "  images/ not found — set it up? [y/n]: "
+    fi
+    read -r img_choice </dev/tty
+    if [[ "$img_choice" =~ ^[yY]$ ]]; then
+        mkdir -p "$target_dir/images"
+        if [ "$PROJECT_TYPE" = "-H" ]; then
+            # Hardware: copy all template images
+            if [ -d "$TEMPLATE_DIR/images" ]; then
+                while IFS= read -r img_file; do
+                    copy_with_conflict "$img_file" \
+                        "$target_dir/images/$(basename "$img_file")" \
+                        "images/$(basename "$img_file")"
+                done < <(find "$TEMPLATE_DIR/images" -maxdepth 1 -type f | sort)
+            fi
+        else
+            # Software/3D: copy only the brand/placeholder images
+            for img in logo.png front.png dubpixel_identicon.png; do
+                if [ -f "$TEMPLATE_DIR/images/$img" ]; then
+                    copy_with_conflict "$TEMPLATE_DIR/images/$img" \
+                        "$target_dir/images/$img" "images/$img"
+                fi
+            done
+        fi
+    else
+        echo "  Skipped images/."
+    fi
+
+    # Step I-8: ibom/ — hardware only, always prompt
+    if [ "$PROJECT_TYPE" = "-H" ]; then
+        echo "Step 8: ibom/ directory..."
+        local ibom_choice
+        if [ -d "$target_dir/ibom" ]; then
+            printf "  ibom/ already exists — set it up anyway? [y/n]: "
+        else
+            printf "  ibom/ not found — create it? [y/n]: "
+        fi
+        read -r ibom_choice </dev/tty
+        if [[ "$ibom_choice" =~ ^[yY]$ ]]; then
+            mkdir -p "$target_dir/ibom"
+            echo "  ibom/ ready."
+        else
+            echo "  Skipped ibom/."
+        fi
+    fi
+
+    # Step I-9: platformio.ini — hardware only (mirrors Step 6)
+    if [ "$PROJECT_TYPE" = "-H" ]; then
+        echo "Step 9: Select an ini file to copy as platformio.ini (or skip)..."
+        pick_ini_file "$TEMPLATE_DIR/ini_files" "$target_dir"
+    fi
+
+    # Step I-10: Code templates (mirrors Steps 6/7)
+    if [ "$PROJECT_TYPE" = "-H" ]; then
+        echo "Step 10: Select code templates for firmware/src/ (or skip)..."
+        pick_code_templates "$TEMPLATE_DIR/code_templates" "$target_dir/firmware/src"
+    elif [ "$PROJECT_TYPE" = "-S" ]; then
+        echo "Step 10: Select code templates for src/ (or skip)..."
+        pick_code_templates "$TEMPLATE_DIR/code_templates" "$target_dir/src"
+    else
+        echo "Step 10: 3D project — no code templates to select."
+    fi
+
+    echo ""
+    echo "Indoctrination complete!"
+    echo "  Project : $PROJECT_NAME"
+    echo "  Path    : $target_dir"
+}
+
 # Resolve actual script location (handle symlinks)
 if [ -L "${BASH_SOURCE[0]}" ]; then
     # Script is a symlink, resolve to actual location
@@ -243,20 +556,33 @@ else
 fi
 echo ""
 
-# Check for minimum arguments (project name required)
-if [ $# -lt 1 ]; then
-    echo "Usage: $0 <project_name> [-H|-S|-D] [-P] [-C] [-V] [-M 'sassy tagline'] [-T 'project description']"
-    echo "  project_name: Name of the new project (required)"
-    echo "  -H: Hardware project (default if omitted)"
-    echo "  -S: Software project"
-    echo "  -D: 3D project — creates src/STL/ structure, places in _.DPX_3d_LIB"
-    echo "  -P: Interactively pick a README template"
-    echo "  -C: Create project in _...CODE directory instead of _...CIRCUIT_PROJECTS"
-    echo "  -V: Verbose output (optional)"
-    echo "  -M 'message': Sassy tagline for the project (optional)"
-    echo "  -T 'text': Longer description for the project (optional)"
+# Pre-scan args for indoctrinate mode before the PROJECT_NAME positional check
+INDOCTRINATE_MODE=false
+for _arg in "$@"; do
+    if [[ "$_arg" == "-I" || "$_arg" == "--indoctrinate" ]]; then
+        INDOCTRINATE_MODE=true
+        break
+    fi
+done
+
+# Check for minimum arguments
+# In indoctrinate mode no positional args are required (target path is optional)
+if [ "$INDOCTRINATE_MODE" = false ] && [ $# -lt 1 ]; then
+    echo "Usage:"
+    echo "  New project : $0 <project_name> [-H|-S|-D] [-P] [-C] [-V] [-M 'tagline'] [-T 'desc']"
+    echo "  Indoctrinate: $0 -I [target_path] [-H|-S|-D] [--force] [-P] [-V] [-M 'tagline'] [-T 'desc']"
     echo ""
-    echo "Arguments can be in any order except project_name must be first"
+    echo "  project_name : Name of the new project (required for new project mode)"
+    echo "  -H           : Hardware project (default if omitted in new project mode)"
+    echo "  -S           : Software project"
+    echo "  -D           : 3D project — creates src/STL/ structure, places in _.DPX_3d_LIB"
+    echo "  -I / --indoctrinate : Stamp template files into an existing project"
+    echo "  --force      : (indoctrinate) Overwrite existing files without prompting"
+    echo "  -P           : Interactively pick a README template"
+    echo "  -C           : Create project in _...CODE directory instead of _...CIRCUIT_PROJECTS"
+    echo "  -V           : Verbose output (optional)"
+    echo "  -M 'message' : Sassy tagline for the project (optional)"
+    echo "  -T 'text'    : Longer description for the project (optional)"
     echo ""
     echo "Environment Variables (optional):"
     echo "  DPX_TEMPLATE_DIR: Override template directory location"
@@ -265,19 +591,22 @@ if [ $# -lt 1 ]; then
     echo "  DPX_3D_DIR: Override where new 3D projects are created"
     echo ""
     echo "Examples:"
-    echo "  $0 my_project -H                        # Create hardware project"
-    echo "  $0 my_app -S -V                         # Create software project with verbose output"
-    echo "  $0 my_project -H -P                     # Hardware project, pick README interactively"
-    echo "  $0 my_app -S -C                         # Software project in _...CODE directory"
-    echo "  $0 my_model -D                          # 3D project in _.DPX_3d_LIB"
-    echo "  $0 my_project -T 'desc' -M 'tag'        # With description and tagline (defaults to -H)"
+    echo "  $0 my_project -H                              # Create hardware project"
+    echo "  $0 my_app -S -V                               # Create software project (verbose)"
+    echo "  $0 my_project -H -P                           # Hardware project, pick README"
+    echo "  $0 my_model -D                                # 3D project in _.DPX_3d_LIB"
+    echo "  $0 my_project -T 'desc' -M 'tag'              # With description and tagline"
+    echo "  $0 -I -H                                      # Indoctrinate: pick from recent hardware projects"
+    echo "  $0 -I /path/to/existing -H                    # Indoctrinate specific project"
+    echo "  $0 -I /path/to/existing -H --force            # Indoctrinate, overwrite without prompting"
     echo "  DPX_PROJECTS_DIR=~/projects $0 my_project -H  # Create in specific directory"
     exit 1
 fi
 
 # Initialize variables
-PROJECT_NAME="$1"
-shift # Remove project name from arguments
+INDOCTRINATE_TARGET=""
+FORCE_OVERWRITE=false
+OVERWRITE_ALL=false
 PROJECT_TYPE=""
 VERBOSE=false
 SASSY_TAGLINE=""
@@ -285,9 +614,22 @@ PROJECT_DESCRIPTION=""
 PICK_README=false
 USE_CODE_DIR=false
 
+# In new project mode, first positional arg is the project name
+if [ "$INDOCTRINATE_MODE" = false ]; then
+    PROJECT_NAME="$1"
+    shift
+fi
+
 # Parse remaining arguments in any order
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -I|--indoctrinate)
+            shift  # already captured in pre-scan above
+            ;;
+        --force)
+            FORCE_OVERWRITE=true
+            shift
+            ;;
         -H|-S|-D)
             if [ -n "$PROJECT_TYPE" ]; then
                 echo "Error: Cannot specify more than one project type (-H, -S, -D)"
@@ -325,16 +667,26 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         *)
-            echo "Error: Unknown option $1"
-            exit 1
+            # In indoctrinate mode the first non-flag positional arg is the target path
+            if [ "$INDOCTRINATE_MODE" = true ] && [ -z "$INDOCTRINATE_TARGET" ] && [[ "$1" != -* ]]; then
+                INDOCTRINATE_TARGET="$1"
+                shift
+            else
+                echo "Error: Unknown option $1"
+                exit 1
+            fi
             ;;
     esac
 done
 
-# Default to hardware project if no type specified
+# Type resolution — indoctrinate mode prompts if not provided; new project defaults to -H
 if [ -z "$PROJECT_TYPE" ]; then
-    PROJECT_TYPE="-H"
-    echo "No project type specified, defaulting to Hardware (-H)"
+    if [ "$INDOCTRINATE_MODE" = true ]; then
+        PROJECT_TYPE=$(pick_project_type)
+    else
+        PROJECT_TYPE="-H"
+        echo "No project type specified, defaulting to Hardware (-H)"
+    fi
 fi
 
 # Software projects default to _...CODE directory unless DPX_PROJECTS_DIR is explicitly set
@@ -405,6 +757,101 @@ else
             current_dir="$(dirname "$current_dir")"
         done
     fi
+fi
+
+# ================================================================================
+# INDOCTRINATE MODE — resolve target and run; exits before new-project flow
+# ================================================================================
+if [ "$INDOCTRINATE_MODE" = true ]; then
+
+    # Resolve the scan root based on project type (for interactive picker)
+    SCAN_ROOT=""
+    if [ "$PROJECT_TYPE" = "-S" ] || [ "$USE_CODE_DIR" = true ]; then
+        # Look for _...CODE sibling
+        current_search="$SCRIPT_DIR"
+        while [ "$current_search" != "/" ]; do
+            parent="$(dirname "$current_search")"
+            if [ -d "$parent/_...CODE" ]; then
+                SCAN_ROOT="$parent/_...CODE"
+                break
+            fi
+            current_search="$parent"
+        done
+        # Fallback: find CIRCUIT_PROJECTS then look for _...CODE alongside it
+        if [ -z "$SCAN_ROOT" ]; then
+            current_search="$SCRIPT_DIR"
+            while [ "$current_search" != "/" ]; do
+                if [[ "$(basename "$current_search")" == *"CIRCUIT_PROJECTS"* ]]; then
+                    parent="$(dirname "$current_search")"
+                    [ -d "$parent/_...CODE" ] && SCAN_ROOT="$parent/_...CODE"
+                    break
+                fi
+                current_search="$(dirname "$current_search")"
+            done
+        fi
+    elif [ "$PROJECT_TYPE" = "-D" ]; then
+        # Look for _.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS
+        current_search="$SCRIPT_DIR"
+        while [ "$current_search" != "/" ]; do
+            parent="$(dirname "$current_search")"
+            if [ -d "$parent/_.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS" ]; then
+                SCAN_ROOT="$parent/_.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS"
+                break
+            fi
+            current_search="$parent"
+        done
+    else
+        # Hardware — look for _...CIRCUIT_PROJECTS
+        current_search="$SCRIPT_DIR"
+        while [ "$current_search" != "/" ]; do
+            if [[ "$(basename "$current_search")" == *"CIRCUIT_PROJECTS"* ]]; then
+                SCAN_ROOT="$current_search"
+                break
+            fi
+            current_search="$(dirname "$current_search")"
+        done
+    fi
+
+    # If no explicit target, launch interactive picker
+    if [ -z "$INDOCTRINATE_TARGET" ]; then
+        if [ -z "$SCAN_ROOT" ]; then
+            echo "Error: Could not locate project root directory to scan"
+            exit 1
+        fi
+        echo "No target path given — pick from recent projects in: $SCAN_ROOT"
+        INDOCTRINATE_TARGET=$(pick_recent_project "$SCAN_ROOT")
+        if [ -z "$INDOCTRINATE_TARGET" ]; then
+            echo "Error: No project selected"
+            exit 1
+        fi
+    fi
+
+    # Validate target exists
+    if [ ! -d "$INDOCTRINATE_TARGET" ]; then
+        echo "Error: Target path does not exist: $INDOCTRINATE_TARGET"
+        exit 1
+    fi
+
+    # Check template dir was resolved
+    if [ ! -d "$TEMPLATE_DIR" ]; then
+        echo "Error: Template directory not found at $TEMPLATE_DIR"
+        exit 1
+    fi
+
+    # Derive project name from target directory basename
+    PROJECT_NAME="$(basename "$INDOCTRINATE_TARGET")"
+
+    echo "Indoctrinate mode"
+    echo "  Template dir : $TEMPLATE_DIR"
+    echo "  Target       : $INDOCTRINATE_TARGET"
+    echo "  Project name : $PROJECT_NAME"
+    echo "  Project type : $PROJECT_TYPE"
+    if [ "$FORCE_OVERWRITE" = true ]; then echo "  Force        : ON"; fi
+    if [ "$VERBOSE" = true ]; then echo "  Verbose      : ON"; fi
+    echo ""
+
+    indoctrinate_project "$INDOCTRINATE_TARGET"
+    exit 0
 fi
 
 # Determine destination directory
