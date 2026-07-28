@@ -330,6 +330,25 @@ Examples:
 
 **NEVER ask permission to create the PR - just do it.**
 
+### Build Artifact Naming Convention
+
+Non-`main` builds append the branch slug to the filename so artifacts are
+self-identifying without opening the run log.
+
+| Branch | Filename |
+|--------|----------|
+| `main` | `<name>-vX.Y.Z.<ext>` |
+| anything else | `<name>-vX.Y.Z-<branch-slug>.<ext>` |
+
+```bash
+if [ "$BRANCH" = "main" ]; then
+  OUT="myapp-v${VERSION}.ext"
+else
+  BRANCH_SLUG=$(echo "$BRANCH" | sed 's|/|-|g' | sed 's|[^a-zA-Z0-9._-]|-|g')
+  OUT="myapp-v${VERSION}-${BRANCH_SLUG}.ext"
+fi
+```
+
 ---
 
 ## 2. Progress Tracking for Multi-Step Work
