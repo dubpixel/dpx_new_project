@@ -349,6 +349,17 @@ else
 fi
 ```
 
+### Mid-Session Discoveries
+
+**Default: log it, don't fix it mid-session.**
+
+- If something broken or wanted comes up, file a GitHub issue and move on
+- Only fix immediately if you explicitly say *"fix this"* or *"fix it now"*
+- Start of session: `gh issue list --repo dubpixel/dpx_tc002_frm`
+- End of session: `gh issue create --repo dubpixel/dpx_tc002_frm --title "..." --body "..."`
+
+The rationale: prevents mid-session context-switching that breaks working code.
+
 ---
 
 ## 2. Progress Tracking for Multi-Step Work
