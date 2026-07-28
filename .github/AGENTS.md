@@ -66,6 +66,15 @@ Bash-based template generator (`src/dpx_newProject.sh`) that creates standardize
 - `.git`, `readme_templates`, `code_templates`, `ini_files` always excluded from copy
 
 ---
+## 0. Mid-Session Issue Triage (MANDATORY)
+**Default: log it, don't fix it mid-session.**
+
+- If something broken or wanted comes up, file a GitHub issue and move on
+- Only fix immediately if you explicitly say *"fix this"* or *"fix it now"*
+- Start of session: `gh issue list --repo <owner>/<repo>`
+- End of session: `gh issue create --repo <owner>/<repo> --title "..." --body "..."`
+
+The rationale: prevents mid-session context-switching that breaks working code.
 
 ## 1. Automatic Workflow (MANDATORY)
 
