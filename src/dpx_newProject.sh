@@ -414,7 +414,7 @@ indoctrinate_project() {
 
     # Step I-1: Root files (mirrors Step 3 of new project creation)
     echo "Step 1: Stamping root files..."
-    for f in .gitignore .gitattributes _config.yml dpx_release_note_template.md Gemfile; do
+    for f in .gitignore .gitattributes _config.yml dpx_release_note_template.md Gemfile AGENTS.md CLAUDE.md; do
         if [ -f "$TEMPLATE_DIR/$f" ]; then
             copy_with_conflict "$TEMPLATE_DIR/$f" "$target_dir/$f" "$f"
         else
@@ -1176,7 +1176,7 @@ fi
 
 # Step 3: Copy root level files
 echo "Step 3: Copying root level files..."
-for f in .gitignore .gitattributes _config.yml dpx_release_note_template.md Gemfile; do
+for f in .gitignore .gitattributes _config.yml dpx_release_note_template.md Gemfile AGENTS.md CLAUDE.md; do
     if [ -f "$TEMPLATE_DIR/$f" ]; then
         [ "$VERBOSE" = true ] && echo "  Copying $f"
         cp "$TEMPLATE_DIR/$f" "$DEST_DIR/$f"
