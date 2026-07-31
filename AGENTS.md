@@ -19,7 +19,8 @@ Bash-based template generator (`src/dpx_newProject.sh`) that creates standardize
 | Hardware README | `README-hardware_template.md` | Template for hardware projects | Schematics, BOMs, fabrication files |
 | Software README | `README-software_template.md` | Template for software projects | API docs, setup instructions |
 | Changelog template | `CHANGELOG-dpx-template.md` | Template changelog | Copied to new projects |
-| GitHub templates | `.github/` | Issue/PR templates, workflows, AGENTS.md | Copied to new projects |
+| GitHub templates | `.github/` | Issue/PR templates, workflows | Copied to new projects |
+| Agent directives | `AGENTS.md` (template root) | AI assistant operational rules | Copied to new projects as root file |
 
 ### Key Decisions
 
@@ -66,6 +67,15 @@ Bash-based template generator (`src/dpx_newProject.sh`) that creates standardize
 - `.git`, `readme_templates`, `code_templates`, `ini_files` always excluded from copy
 
 ---
+## 0. Mid-Session Issue Triage (MANDATORY)
+**Default: log it, don't fix it mid-session.**
+
+- If something broken or wanted comes up, file a GitHub issue and move on
+- Only fix immediately if you explicitly say *"fix this"* or *"fix it now"*
+- Start of session: `gh issue list --repo <owner>/<repo>`
+- End of session: `gh issue create --repo <owner>/<repo> --title "..." --body "..."`
+
+The rationale: prevents mid-session context-switching that breaks working code.
 
 ## 1. Automatic Workflow (MANDATORY)
 
@@ -329,6 +339,36 @@ Examples:
 - `[Telegraf] Fix enum processor deprecation`
 
 **NEVER ask permission to create the PR - just do it.**
+
+### Build Artifact Naming Convention
+
+Non-`main` builds append the branch slug to the filename so artifacts are
+self-identifying without opening the run log.
+
+| Branch | Filename |
+|--------|----------|
+| `main` | `<name>-vX.Y.Z.<ext>` |
+| anything else | `<name>-vX.Y.Z-<branch-slug>.<ext>` |
+
+```bash
+if [ "$BRANCH" = "main" ]; then
+  OUT="myapp-v${VERSION}.ext"
+else
+  BRANCH_SLUG=$(echo "$BRANCH" | sed 's|/|-|g' | sed 's|[^a-zA-Z0-9._-]|-|g')
+  OUT="myapp-v${VERSION}-${BRANCH_SLUG}.ext"
+fi
+```
+
+### Mid-Session Discoveries
+
+**Default: log it, don't fix it mid-session.**
+
+- If something broken or wanted comes up, file a GitHub issue and move on
+- Only fix immediately if you explicitly say *"fix this"* or *"fix it now"*
+- Start of session: `gh issue list --repo dubpixel/dpx_tc002_frm`
+- End of session: `gh issue create --repo dubpixel/dpx_tc002_frm --title "..." --body "..."`
+
+The rationale: prevents mid-session context-switching that breaks working code.
 
 ---
 
