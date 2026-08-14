@@ -5,6 +5,14 @@ All notable changes to the DPX New Project Creator will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.7.2] - 2026-08-14
+
+### Fixed
+- Indoctrinate mode (`-I`) merge (`m`/`M`) could corrupt structured files: naive line-append merging dumped `CHANGELOG-dpx-template.md`'s placeholder `[0.1.0] - YYYY-MM-DD` entry below real changelog history, and appended `_config.yml`'s `- jekyll-remote-theme` list line as a dangling entry outside its `plugins:` parent. `CHANGELOG.md` and `*.yml`/`*.yaml` files now only offer `[y]es / [n]o / [a]ll-overwrite` — merge is disabled for these since naive line-merging can't safely represent their structure. Bulk merge-all mode also now skips these files instead of silently corrupting them.
+- `merge_append_unique()` could concatenate the first merged line onto the destination's existing last line when the destination file lacked a trailing newline (e.g. `.github/PULL_REQUEST_TEMPLATE.md`, issue templates) — now ensures a trailing newline before appending.
+- Indoctrinate mode's dot-directory stamping (Step 2) no longer copies `.idea/` into target projects — it now matches the normal new-project flow, which already excluded it.
+- Indoctrinate mode no longer silently creates a new blank root `AGENTS.md`/`CLAUDE.md` shadowing an existing customized copy at an alternate location (e.g. `.github/AGENTS.md`). It now detects this and prompts to move the old file to `<name>.old` at root before stamping the fresh template, leave both in place, or skip stamping root entirely.
+
 ## [v0.6.0] - 2026-06-24
 
 ### Added
