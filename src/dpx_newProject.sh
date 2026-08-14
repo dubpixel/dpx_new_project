@@ -298,6 +298,14 @@ merge_append_unique() {
     local src="$1"
     local dest="$2"
     local count=0
+
+    # If dest exists and doesn't end with a newline, appending via >> would
+    # concatenate the first new line onto dest's existing last line. Fix by
+    # emitting a newline first.
+    if [ -s "$dest" ] && [ -n "$(tail -c1 "$dest")" ]; then
+        printf '\n' >> "$dest"
+    fi
+
     while IFS= read -r line; do
         if ! grep -qxF "$line" "$dest" 2>/dev/null; then
             echo "$line" >> "$dest"
@@ -305,6 +313,20 @@ merge_append_unique() {
         fi
     done < "$src"
     echo "$count"
+}
+
+# Function: returns 0 (true) if the given filename is unsafe to line-merge.
+# Naive line-append merging can't represent CHANGELOG.md's dated version
+# sections or a YAML file's key/list nesting — merging those structurally
+# either duplicates boilerplate or produces invalid/dangling syntax. These
+# files should only ever be fully overwritten, skipped, or hand-edited.
+is_merge_unsafe() {
+    local name
+    name="$(basename "$1")"
+    case "$name" in
+        CHANGELOG.md|*.yml|*.yaml) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 # Function: copy a single file with conflict detection
@@ -318,6 +340,9 @@ merge_append_unique() {
 #   [m]erge         — append lines from template not already in destination
 #   [a]ll-overwrite — overwrite this file and all remaining without prompting
 #   [M]erge-all     — merge this file and all remaining without prompting
+#
+# NOTE: merge (m/M) is unsupported for files where is_merge_unsafe() is true
+# (CHANGELOG.md, *.yml/*.yaml) — those only offer y/n/a.
 copy_with_conflict() {
     local src="$1"
     local dest="$2"
@@ -330,6 +355,9 @@ copy_with_conflict() {
         return
     fi
 
+    local merge_unsafe=false
+    is_merge_unsafe "$dest" && merge_unsafe=true
+
     # File exists — resolve conflict
     if [ "$FORCE_OVERWRITE" = true ] || [ "$OVERWRITE_ALL" = true ]; then
         cp "$src" "$dest"
@@ -338,6 +366,10 @@ copy_with_conflict() {
     fi
 
     if [ "$MERGE_ALL" = true ]; then
+        if [ "$merge_unsafe" = true ]; then
+            echo "  Merge-all skipped for $label (merge unsupported for this file type) — left unchanged, reconcile manually."
+            return
+        fi
         local added
         added=$(merge_append_unique "$src" "$dest")
         echo "  Merged: $label (+${added} lines)"
@@ -345,7 +377,11 @@ copy_with_conflict() {
     fi
 
     local choice
-    printf "  %s exists — [y]es / [n]o / [m]erge / [a]ll-overwrite / [M]erge-all: " "$label"
+    if [ "$merge_unsafe" = true ]; then
+        printf "  %s exists — [y]es / [n]o / [a]ll-overwrite (merge unsupported for this file type): " "$label"
+    else
+        printf "  %s exists — [y]es / [n]o / [m]erge / [a]ll-overwrite / [M]erge-all: " "$label"
+    fi
     read -r choice </dev/tty
     case "$choice" in
         y|Y)
@@ -353,15 +389,23 @@ copy_with_conflict() {
             echo "  Overwritten: $label"
             ;;
         m)
-            local added
-            added=$(merge_append_unique "$src" "$dest")
-            echo "  Merged: $label (+${added} lines)"
+            if [ "$merge_unsafe" = true ]; then
+                echo "  Skipped: $label (merge unsupported for this file type)"
+            else
+                local added
+                added=$(merge_append_unique "$src" "$dest")
+                echo "  Merged: $label (+${added} lines)"
+            fi
             ;;
         M)
-            MERGE_ALL=true
-            local added
-            added=$(merge_append_unique "$src" "$dest")
-            echo "  Merged: $label (+${added} lines)  (merge-all mode)"
+            if [ "$merge_unsafe" = true ]; then
+                echo "  Skipped: $label (merge unsupported for this file type)"
+            else
+                MERGE_ALL=true
+                local added
+                added=$(merge_append_unique "$src" "$dest")
+                echo "  Merged: $label (+${added} lines)  (merge-all mode)"
+            fi
             ;;
         a|A)
             OVERWRITE_ALL=true
@@ -394,6 +438,51 @@ copy_dir_with_conflict() {
     done < <(find "$src_dir" -type f | sort)
 }
 
+# Function: if a well-known root doc (AGENTS.md, CLAUDE.md) doesn't exist at
+# the target project's root but a copy exists at one of a few conventional
+# alternate locations, offer to relocate it before a fresh template copy
+# lands at root. Without this, stamping a "new" root file silently shadows
+# the project's real, customized doc instead of failing loudly.
+# $1 = target project dir, $2 = filename (e.g. AGENTS.md)
+# Sets RELOCATE_SKIP_ROOT_STAMP=true if the caller should skip stamping root.
+relocate_alternate_doc() {
+    local target_dir="$1"
+    local name="$2"
+
+    # Already at root — nothing to relocate
+    [ -f "$target_dir/$name" ] && return
+
+    local alt_locations=(".github/$name" "docs/$name")
+    local found_rel=""
+    for rel in "${alt_locations[@]}"; do
+        if [ -f "$target_dir/$rel" ]; then
+            found_rel="$rel"
+            break
+        fi
+    done
+
+    [ -z "$found_rel" ] && return
+
+    echo ""
+    echo "  Found existing $name at $found_rel (not at project root)."
+    local choice
+    printf "  [m]ove it to root as %s.old + stamp fresh template / [l]eave it + also stamp root %s / [s]kip stamping root %s: " "$name" "$name" "$name"
+    read -r choice </dev/tty
+    case "$choice" in
+        m|M)
+            mv "$target_dir/$found_rel" "$target_dir/${name}.old"
+            echo "  Moved: $found_rel -> ${name}.old (root)"
+            ;;
+        s|S)
+            RELOCATE_SKIP_ROOT_STAMP=true
+            echo "  Skipped: root $name will not be stamped"
+            ;;
+        *)
+            echo "  Leaving $found_rel in place; root $name will also be stamped"
+            ;;
+    esac
+}
+
 # Function: stamp template files into an existing project directory
 # $1 = absolute path to the target project directory
 indoctrinate_project() {
@@ -416,6 +505,13 @@ indoctrinate_project() {
     echo "Step 1: Stamping root files..."
     for f in .gitignore .gitattributes _config.yml dpx_release_note_template.md Gemfile AGENTS.md CLAUDE.md; do
         if [ -f "$TEMPLATE_DIR/$f" ]; then
+            if [ "$f" = "AGENTS.md" ] || [ "$f" = "CLAUDE.md" ]; then
+                RELOCATE_SKIP_ROOT_STAMP=false
+                relocate_alternate_doc "$target_dir" "$f"
+                if [ "$RELOCATE_SKIP_ROOT_STAMP" = true ]; then
+                    continue
+                fi
+            fi
             copy_with_conflict "$TEMPLATE_DIR/$f" "$target_dir/$f" "$f"
         else
             echo "  Warning: $f not found in template, skipping"
@@ -423,8 +519,11 @@ indoctrinate_project() {
     done
 
     # Step I-2: Dot-directories (mirrors Step 3b of new project creation)
+    # .idea is intentionally excluded — it's JetBrains editor state, not
+    # project template content, and the normal new-project flow already
+    # excludes it (see the .github .vscode list used for fresh projects).
     echo "Step 2: Stamping dot-directories..."
-    for dotdir in .github .idea .vscode; do
+    for dotdir in .github .vscode; do
         if [ -d "$TEMPLATE_DIR/$dotdir" ]; then
             copy_dir_with_conflict "$TEMPLATE_DIR/$dotdir" "$target_dir/$dotdir" "$dotdir"
         else
