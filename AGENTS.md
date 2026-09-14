@@ -37,11 +37,25 @@ Bash-based template generator (`src/dpx_newProject.sh`) that creates standardize
 | `-H` | Hardware project — copies `hardware/` + `firmware/` trees, prompts for `platformio.ini` and firmware code templates | Default if neither `-H`, `-S`, nor `-D` given |
 | `-S` | Software project — creates `src/` + `images/`, places project in `_...CODE` (not `_...CIRCUIT_PROJECTS`) | — |
 | `-D` | 3D project — creates `src/STL/` + `images/`, places project in `_.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS/`; no code template prompts | — |
+| `-I` / `--indoctrinate [target_path]` | Indoctrinate mode — stamps current template files into an **existing** project directory instead of creating a new one; `target_path` optional (offers a recent-projects picker if omitted) | — |
+| `--force` | (indoctrinate only) Skip the per-file `y/n/m/a/M` conflict prompt; does **not** skip the `images/`/`ibom/` set-up-or-skip prompts | — |
 | `-P` | Interactively pick a README template from `readme_templates/` | Auto-selects based on project type |
 | `-C` | Force project into `_...CODE` directory (hardware projects use this to override default) | Auto-enabled for `-S` |
 | `-V` | Verbose output — shows every file copied and directory created | Off |
 | `-M 'text'` | Sassy tagline — replaces placeholder in README | — |
 | `-T 'text'` | Project description — replaces placeholder in README | — |
+
+**Indoctrinate-mode notes** (see `.claude/skills/dpx-project-indoctrinate/SKILL.md`
+for the full agent-facing version of this):
+- Merge (`m`/`M`) is disabled for `CHANGELOG.md` and any `*.yml`/`*.yaml` —
+  naive line-append merging can't safely represent dated changelog sections
+  or YAML nesting. Those files only offer `y`/`n`/`a`.
+- If a customized `AGENTS.md`/`CLAUDE.md` exists somewhere other than
+  project root (e.g. `.github/AGENTS.md`), the script detects it and offers
+  to relocate it to `<name>.old` before stamping a fresh root copy, rather
+  than silently shadowing it.
+- `VERSION` is always rewritten to `0.1.0` in this mode, never copied from
+  the template.
 
 **Destination directory resolution order:**
 1. `DPX_3D_DIR` env var → 3D projects only (explicit override)
@@ -50,6 +64,16 @@ Bash-based template generator (`src/dpx_newProject.sh`) that creates standardize
 4. `-C` flag (or `-S` type) → walks up tree to find `_...CODE/`
 5. Default → walks up tree to find `_...CIRCUIT_PROJECTS/`
 6. Fallback → current working directory
+
+### Working with an AI Agent
+
+Use the `dpx-project-indoctrinate` skill (`.claude/skills/dpx-project-indoctrinate/SKILL.md`)
+instead of re-reading `src/dpx_newProject.sh` for flag/mode context — it
+already documents new-project vs. indoctrinate mode, flag semantics,
+destination resolution, and the indoctrinate caveats above. The script
+needs a real terminal (several prompts read from `/dev/tty`), so the skill
+builds the command and hands it to the user to run rather than executing it
+itself. Human-readable mirror of the same content: https://dubpixel.github.io/dpx_new_project/
 
 ### Common Operations
 
