@@ -139,13 +139,14 @@ Additionally the ai was fuly briefed with an extensive set of paramaters about h
 
 ### Basic Usage
 ```bash
-./dpx_newProject.sh <project_name> [-H|-S] [-P] [-C] [-V] [-M 'sassy tagline'] [-T 'project description']
+./dpx_newProject.sh <project_name> [-H|-S|-D] [-P] [-C] [-V] [-M 'sassy tagline'] [-T 'project description']
 ```
 
 **Arguments:**
 - `project_name`: Name of the new project (required, first argument)
 - `-H`: Hardware project (default if omitted)
 - `-S`: Software project
+- `-D`: 3D project — creates `src/STL/` + `images/`, lands in `_.DPX_3d_LIB/DPX_3d/_.3D_PROJECTS/`
 - `-P`: Interactively pick a README template from the readme_templates directory
 - `-C`: Create project in `_...CODE` directory instead of `_...CIRCUIT_PROJECTS`
 - `-V`: Verbose output (optional)
@@ -158,8 +159,34 @@ Additionally the ai was fuly briefed with an extensive set of paramaters about h
 ./dpx_newProject.sh my_app -S -M "The coolest software ever" -T "A comprehensive solution for all your needs"
 ./dpx_newProject.sh my_project -H -P              # pick README template interactively
 ./dpx_newProject.sh my_code_thing -S -C           # create in _...CODE directory
+./dpx_newProject.sh my_model -D                   # 3D project in _.DPX_3d_LIB
 ./dpx_newProject.sh quick_hw                      # no flags — defaults to hardware
 ```
+
+### Indoctrinate Mode (`-I`)
+
+Bring an **existing** project directory up to date with the current
+template instead of creating a new one. Stamps root docs (`AGENTS.md`,
+`CLAUDE.md`, `.gitignore`, `_config.yml`, etc.), `.github/`, `.vscode/`,
+`README.md`, `CHANGELOG.md`, `images/`, and (hardware) `ibom/`/
+`platformio.ini`/firmware templates into the target, prompting per file on
+conflict (`y`/`n`/`m`erge/`a`ll-overwrite/`M`erge-all — merge is disabled
+for `CHANGELOG.md` and `*.yml`/`*.yaml`, which only offer `y`/`n`/`a`).
+
+```bash
+./dpx_newProject.sh -I [target_path] [-H|-S|-D] [--force] [-P] [-V] [-M 'tagline'] [-T 'desc']
+```
+
+```bash
+./dpx_newProject.sh -I -H                                     # pick from recent hardware projects
+./dpx_newProject.sh -I /path/to/existing -H                   # indoctrinate a specific project
+./dpx_newProject.sh -I /path/to/existing -H --force            # overwrite without per-file prompts
+```
+
+`--force` skips the per-file conflict prompt, but **not** the
+`images/`/`ibom/` set-up-or-skip prompts — those always ask. See
+[the Pages site](https://dubpixel.github.io/dpx_new_project/) for the full
+write-up of indoctrinate-mode caveats (merge safety, root doc relocation).
 
 ### Global Installation (Symlink Setup)
 
@@ -220,6 +247,24 @@ Then reload:
 ```bash
 source ~/.zshrc
 ```
+<!-- AI AGENT -->
+## Working with an AI Agent
+
+This repo ships a Claude Code skill —
+[`.claude/skills/dpx-project-indoctrinate/`](.claude/skills/dpx-project-indoctrinate/SKILL.md)
+— that already knows this script's flags, destination resolution order, and
+indoctrinate-mode caveats (merge safety, root doc relocation), so an agent
+doesn't need to re-read `src/dpx_newProject.sh` every session. Point an
+agent at a project and ask it to scaffold or indoctrinate; it builds the
+right command from context (asking only what's genuinely ambiguous) and
+hands it to you to run — the script needs a real terminal since several
+prompts read from `/dev/tty` and aren't skippable with `--force`.
+
+Full instructions (mirrors this README, kept for humans without a repo
+checkout): **[dubpixel.github.io/dpx_new_project](https://dubpixel.github.io/dpx_new_project/)**
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 <!-- REFLECTION -->
 ## Reflection
 
