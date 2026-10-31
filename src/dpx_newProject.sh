@@ -502,6 +502,9 @@ indoctrinate_project() {
     MERGE_ALL=false
 
     # Step I-1: Root files (mirrors Step 3 of new project creation)
+    # AGENTS.md/CLAUDE.md here come from TEMPLATE_DIR (dpx_readme_template),
+    # not from this repo's own AGENTS.md/CLAUDE.md -- see the TEMPLATE_DIR
+    # resolution block above for why.
     echo "Step 1: Stamping root files..."
     for f in .gitignore .gitattributes _config.yml dpx_release_note_template.md Gemfile AGENTS.md CLAUDE.md; do
         if [ -f "$TEMPLATE_DIR/$f" ]; then
@@ -900,6 +903,13 @@ if [ -z "$DPX_SOFTWARE_DIR" ] && [ -n "$DPX_PROJECTS_DIR" ]; then
     fi
 fi
 
+# TEMPLATE_DIR is the dpx_readme_template repo, NOT this repo (dpx_new_project).
+# Every file this script stamps into a target project -- root docs including
+# AGENTS.md/CLAUDE.md, README templates, images, ini_files, code_templates --
+# is sourced from TEMPLATE_DIR. This repo's own AGENTS.md/CLAUDE.md are just
+# this project's own (already-indoctrinated, customized) copies -- they are
+# never read from here as a source for other projects.
+#
 # Environment variable overrides (for flexibility when symlinked or moved)
 if [ -n "$DPX_TEMPLATE_DIR" ]; then
     TEMPLATE_DIR="$DPX_TEMPLATE_DIR"
@@ -1274,6 +1284,9 @@ else
 fi
 
 # Step 3: Copy root level files
+# AGENTS.md/CLAUDE.md here come from TEMPLATE_DIR (dpx_readme_template) --
+# the generic, placeholder-filled template -- not from this repo's own
+# AGENTS.md/CLAUDE.md, which document dpx_new_project itself.
 echo "Step 3: Copying root level files..."
 for f in .gitignore .gitattributes _config.yml dpx_release_note_template.md Gemfile AGENTS.md CLAUDE.md; do
     if [ -f "$TEMPLATE_DIR/$f" ]; then
