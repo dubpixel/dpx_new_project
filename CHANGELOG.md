@@ -5,6 +5,11 @@ All notable changes to the DPX New Project Creator will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.0] - 2026-10-31
+
+### Changed
+- `dpx-project-indoctrinate` skill rewritten so agent-performed, judgment-based indoctrination is the primary path, not a fallback. The skill now reads the real template source and the target's real current content directly (Read/Edit/Write) and merges with structural judgment — correct placement for new sections, folding overlapping real content into template slots, structured edits for `CHANGELOG.md`/YAML instead of line-append — rather than building a CLI invocation and handing it to the user to run interactively. The script itself still exists and can be handed off on explicit request, but that is now the exception path.
+
 ## [v0.8.0] - 2026-09-14
 
 ### Added
