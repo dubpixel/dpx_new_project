@@ -114,7 +114,7 @@ where Step 5's judgment applies).
 | `.github/`, `.vscode/` | `<template>/<dir>/` (recursive) | `.idea/` is never touched, in either mode |
 | `_layouts/`, `_sass/`, `assets/` | `<template>/<dir>/` (recursive) | Self-hosted GitHub Pages theme (replaces the old `remote_theme: pages-themes/midnight`). If the target still has `remote_theme`/`theme` in its own `_config.yml`, see Step 5 — this is the main thing `dpx-fix-pages-rendering` and older indoctrinate targets need patched in |
 | `CHANGELOG.md` | `<template>/CHANGELOG-dpx-template.md` | Structured merge only — see Step 5 |
-| `README.md` | `<template>/readme_templates/README-dpx_{hardware,software,3d}_template.md` by type (or a newer sub-variant — footer-logo/inline-logo etc — if the user has a preference) | Needs string replacement — see Step 5 |
+| `README.md` | one of `<template>/readme_templates/README-*.md` | **Ask which one** (list the options, suggest the type-appropriate default) — see Step 5. Needs string replacement after. |
 | `VERSION` | n/a — always written fresh as `0.1.0` | Never copied from template; ask before overwriting an existing value |
 | `images/` | `<template>/images/` | Hardware: full set. Software/3D: `logo.png`, `front.png`, `dubpixel_identicon.png` only |
 | `ibom/` | n/a — just create the empty dir | Hardware only |
@@ -159,14 +159,21 @@ where Step 5's judgment applies).
   `default` layout — local wins, but the leftover `remote_theme:` key is
   dead weight and the gem dependency is pointless once local files exist).
 
-- **README**: pick the type-appropriate default template, then apply the
-  same string replacements the script does — `dpx_replace_projectName` →
-  the project name (lowercase), the sassy-tagline placeholder, and the
+- **README**: don't silently default to the type-appropriate template —
+  `ls <template>/readme_templates/` and show the user what's actually there
+  (there are several variants per type now: plain hardware/software/3d, the
+  slim v2/v3 variants, footer-logo/inline-logo sub-versions of the software
+  template, etc.), with the type-appropriate one called out as the
+  suggested default. This mirrors the script's own `-P` picker — the skill
+  shouldn't be less flexible than the CLI flag. Skip asking only if the user
+  already named a specific template in their request. Once picked, apply the
+  same string replacements the script does — `dpx_replace_projectName` → the
+  project name (lowercase), the sassy-tagline placeholder, and the
   short-description placeholder — via `Edit`, not `sed`. Ask the user for
   tagline/description text if they want it customized and haven't given it
   to you; don't invent one for them. If `README.md` already exists and
-  differs substantially from the template, don't overwrite blindly — ask:
-  keep the existing file and drop the template alongside as a reference
+  differs substantially from the chosen template, don't overwrite blindly —
+  ask: keep the existing file and drop the template alongside as a reference
   copy, do a structural merge, or replace outright.
 
 - **`VERSION`**: create fresh as `0.1.0` if missing. If it already exists
