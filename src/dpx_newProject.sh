@@ -534,6 +534,19 @@ indoctrinate_project() {
         fi
     done
 
+    # Step I-2b: Pages theme (_layouts, _sass, assets) -- mirrors Step 3c of
+    # new project creation. Older indoctrinate targets are likely still on
+    # a remote_theme; this stamps the self-hosted one alongside whatever's
+    # there, with the usual per-file conflict prompt.
+    echo "Step 2b: Stamping Pages theme (_layouts, _sass, assets)..."
+    for themedir in _layouts _sass assets; do
+        if [ -d "$TEMPLATE_DIR/$themedir" ]; then
+            copy_dir_with_conflict "$TEMPLATE_DIR/$themedir" "$target_dir/$themedir" "$themedir"
+        else
+            [ "$VERBOSE" = true ] && echo "  $themedir not in template, skipping"
+        fi
+    done
+
     # Step I-3: CHANGELOG (mirrors Step 4 of new project creation)
     echo "Step 3: Stamping CHANGELOG.md..."
     if [ -f "$TEMPLATE_DIR/CHANGELOG-dpx-template.md" ]; then
@@ -1305,6 +1318,18 @@ for dotdir in .github .vscode; do
         cp -r "$TEMPLATE_DIR/$dotdir" "$DEST_DIR/$dotdir"
     else
         [ "$VERBOSE" = true ] && echo "  $dotdir not found in template, skipping"
+    fi
+done
+
+# Step 3c: Copy the self-hosted GitHub Pages theme (_layouts, _sass, assets)
+# if present in template -- pairs with _config.yml's kramdown settings above.
+echo "Step 3c: Copying Pages theme (_layouts, _sass, assets)..."
+for themedir in _layouts _sass assets; do
+    if [ -d "$TEMPLATE_DIR/$themedir" ]; then
+        [ "$VERBOSE" = true ] && echo "  Copying $themedir/"
+        cp -r "$TEMPLATE_DIR/$themedir" "$DEST_DIR/$themedir"
+    else
+        [ "$VERBOSE" = true ] && echo "  $themedir not found in template, skipping"
     fi
 done
 
