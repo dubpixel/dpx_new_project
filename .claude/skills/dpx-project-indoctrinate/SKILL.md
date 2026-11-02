@@ -112,6 +112,7 @@ where Step 5's judgment applies).
 | `.gitignore`, `.gitattributes`, `_config.yml`, `dpx_release_note_template.md`, `Gemfile` | `<template>/<file>` | Plain root files |
 | `AGENTS.md`, `CLAUDE.md` | `<template>/<file>` | **Always a pair** — see Step 5 |
 | `.github/`, `.vscode/` | `<template>/<dir>/` (recursive) | `.idea/` is never touched, in either mode |
+| `_layouts/`, `_sass/`, `assets/` | `<template>/<dir>/` (recursive) | Self-hosted GitHub Pages theme (replaces the old `remote_theme: pages-themes/midnight`). If the target still has `remote_theme`/`theme` in its own `_config.yml`, see Step 5 — this is the main thing `dpx-fix-pages-rendering` and older indoctrinate targets need patched in |
 | `CHANGELOG.md` | `<template>/CHANGELOG-dpx-template.md` | Structured merge only — see Step 5 |
 | `README.md` | `<template>/readme_templates/README-dpx_{hardware,software,3d}_template.md` by type (or a newer sub-variant — footer-logo/inline-logo etc — if the user has a preference) | Needs string replacement — see Step 5 |
 | `VERSION` | n/a — always written fresh as `0.1.0` | Never copied from template; ask before overwriting an existing value |
@@ -150,6 +151,13 @@ where Step 5's judgment applies).
   the correct parent. A pure *addition* like this doesn't need to block on
   a question every time — state what you added and move on. Only ask first
   if the change would remove or rewrite something that's already there.
+  **Pages theme migration**: if `_config.yml` already has a `remote_theme:`
+  (e.g. `pages-themes/midnight`) or `theme:` key, that's a removal, so ask
+  before deleting it — but it's a reasonable default to recommend doing so
+  once `_layouts/`/`_sass/`/`assets/` are stamped, since the two theme
+  sources will otherwise conflict (gem theme + local theme both claiming
+  `default` layout — local wins, but the leftover `remote_theme:` key is
+  dead weight and the gem dependency is pointless once local files exist).
 
 - **README**: pick the type-appropriate default template, then apply the
   same string replacements the script does — `dpx_replace_projectName` →
