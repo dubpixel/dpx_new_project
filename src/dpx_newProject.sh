@@ -808,9 +808,14 @@ PROJECT_DESCRIPTION=""
 PICK_README=false
 USE_CODE_DIR=false
 
-# In new project mode, first positional arg is the project name
+# In new project mode, first positional arg is the project name.
+# Lowercase it immediately so the actual folder created on disk matches
+# dpx's naming convention (lowercase, e.g. dpx_buttonode) instead of
+# whatever case the user happened to type -- replace_readme_strings()
+# already lowercases the name wherever it appears inside README content,
+# but that did nothing for the folder name itself until now.
 if [ "$INDOCTRINATE_MODE" = false ]; then
-    PROJECT_NAME="$1"
+    PROJECT_NAME="$(echo "$1" | tr '[:upper:]' '[:lower:]')"
     shift
 fi
 
