@@ -5,10 +5,15 @@ All notable changes to the DPX New Project Creator will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.9.1] - 2026-11-27
+## [v0.10.1] - 2026-11-27
 
 ### Fixed
 - New-project mode created the destination folder using the project name exactly as typed (e.g. `./dpx_newProject.sh MyProject -S` created a folder literally named `MyProject`), inconsistent with the lowercase `dpx_*` naming convention used everywhere else. `replace_readme_strings()` already lowercased the name wherever it appeared inside README content, but never touched the actual folder name. `PROJECT_NAME` is now lowercased immediately after being read from the first positional arg, so every downstream use (destination path, `mkdir`, echoed messages) is consistent.
+
+## [v0.10.0] - 2026-11-01
+
+### Added
+- New-project mode and indoctrinate mode now stamp `_layouts/`, `_sass/`, and `assets/` from `TEMPLATE_DIR` — the self-hosted dark GitHub Pages theme (`dpx-midnight`) that replaced `dpx_readme_template`'s old `remote_theme: pages-themes/midnight` dependency. Every freshly-scaffolded project now gets the theme with no third-party attribution banner, and `dpx-project-indoctrinate`'s file plan documents it as the main thing older indoctrinate targets need patched in.
 
 ## [v0.9.0] - 2026-10-31
 
