@@ -5,6 +5,11 @@ All notable changes to the DPX New Project Creator will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.10.0] - 2026-11-01
+
+### Added
+- New-project mode and indoctrinate mode now stamp `_layouts/`, `_sass/`, and `assets/` from `TEMPLATE_DIR` — the self-hosted dark GitHub Pages theme (`dpx-midnight`) that replaced `dpx_readme_template`'s old `remote_theme: pages-themes/midnight` dependency. Every freshly-scaffolded project now gets the theme with no third-party attribution banner, and `dpx-project-indoctrinate`'s file plan documents it as the main thing older indoctrinate targets need patched in.
+
 ## [v0.9.0] - 2026-10-31
 
 ### Changed
